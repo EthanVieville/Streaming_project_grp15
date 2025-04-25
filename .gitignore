@@ -1,0 +1,17 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Build & Scala
+target/
+out/
+*.class
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Custom folders
+INPUT/
+OUTPUT/
