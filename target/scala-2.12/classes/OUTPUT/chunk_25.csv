@@ -1,0 +1,101 @@
+ID,Marriage_Type,Age_at_Marriage,Gender,Education_Level,Caste_Match,Religion,Parental_Approval,Urban_Rural,Dowry_Exchanged,Marital_Satisfaction,Divorce_Status,Children_Count,Income_Level,Years_Since_Marriage,Spouse_Working,Inter-Caste,Inter-Religion
+2501,Arranged,34,Male,Graduate,Same,Christian,Yes,Rural,No,Medium,No,0,High,24,Yes,No,No
+2502,Love,26,Female,Graduate,Same,Hindu,Yes,Urban,Not Disclosed,Low,No,2,Middle,31,No,No,No
+2503,Love,32,Male,Graduate,Different,Sikh,No,Urban,Not Disclosed,Medium,No,3,Middle,18,Yes,No,Yes
+2504,Love,36,Male,PhD,Same,Christian,Yes,Rural,No,High,No,0,Middle,17,Yes,No,Yes
+2505,Love,35,Male,Graduate,Different,Hindu,No,Rural,Yes,Medium,No,1,Low,43,Yes,No,No
+2506,Arranged,18,Female,School,Different,Muslim,Yes,Urban,Yes,High,Yes,2,High,6,No,Yes,Yes
+2507,Love,33,Female,Graduate,Different,Sikh,No,Urban,Not Disclosed,Medium,No,3,Middle,39,Yes,No,No
+2508,Arranged,18,Male,PhD,Same,Muslim,Yes,Rural,Yes,Medium,No,0,Middle,6,No,No,No
+2509,Arranged,27,Female,Graduate,Different,Muslim,Yes,Rural,Yes,Medium,No,3,High,11,Yes,No,Yes
+2510,Arranged,25,Male,Postgraduate,Same,Sikh,Partial,Urban,No,Medium,Yes,0,Middle,44,Yes,No,Yes
+2511,Love,29,Female,Postgraduate,Same,Hindu,Yes,Rural,No,High,No,2,Middle,12,No,Yes,No
+2512,Love,27,Female,School,Same,Others,Yes,Rural,No,Low,No,4,Middle,35,No,No,No
+2513,Love,21,Male,School,Same,Muslim,Yes,Urban,No,High,No,3,High,6,Yes,No,Yes
+2514,Arranged,39,Female,School,Different,Hindu,Yes,Rural,No,Low,No,5,Low,13,No,No,No
+2515,Love,25,Female,Postgraduate,Same,Muslim,Yes,Urban,Yes,Low,No,2,Middle,1,No,No,Yes
+2516,Love,37,Male,PhD,Same,Hindu,Yes,Urban,Yes,Medium,No,3,High,4,Yes,No,No
+2517,Arranged,33,Female,School,Different,Christian,Yes,Urban,Yes,Medium,No,1,Low,37,Yes,No,No
+2518,Arranged,25,Female,School,Same,Hindu,Yes,Rural,No,Low,No,5,High,29,Yes,No,No
+2519,Arranged,27,Female,Postgraduate,Same,Muslim,Yes,Rural,No,Medium,No,0,Middle,39,Yes,No,No
+2520,Arranged,27,Male,School,Different,Christian,Partial,Rural,No,High,No,5,Middle,10,No,Yes,No
+2521,Arranged,19,Male,Graduate,Same,Hindu,Yes,Urban,No,Medium,No,3,Middle,39,No,No,No
+2522,Arranged,37,Female,Graduate,Same,Hindu,Yes,Rural,No,Medium,No,3,High,23,No,No,No
+2523,Love,29,Male,School,Different,Muslim,Yes,Urban,No,Low,No,4,High,34,No,No,No
+2524,Arranged,39,Male,School,Same,Hindu,Yes,Rural,No,Medium,No,5,Middle,19,Yes,No,No
+2525,Arranged,28,Female,PhD,Same,Christian,Yes,Urban,Yes,Medium,No,4,High,42,No,Yes,Yes
+2526,Love,37,Female,Postgraduate,Different,Sikh,Yes,Rural,Yes,Medium,No,0,High,49,Yes,No,No
+2527,Arranged,39,Male,Postgraduate,Same,Muslim,No,Rural,No,Medium,No,2,Middle,15,No,No,No
+2528,Arranged,28,Male,School,Same,Hindu,Partial,Urban,No,Low,No,0,Low,10,Yes,No,No
+2529,Love,35,Male,School,Different,Hindu,Yes,Urban,No,Medium,No,2,Low,34,No,Yes,No
+2530,Arranged,24,Female,Graduate,Same,Hindu,No,Urban,Yes,Medium,No,2,Middle,39,Yes,No,Yes
+2531,Arranged,27,Female,Graduate,Different,Others,Yes,Urban,Yes,Medium,No,0,High,25,Yes,No,No
+2532,Arranged,32,Female,School,Same,Others,Yes,Urban,No,Medium,No,0,High,26,Yes,No,Yes
+2533,Love,20,Female,School,Same,Muslim,Yes,Urban,Yes,Medium,No,0,Low,45,Yes,Yes,No
+2534,Love,25,Male,PhD,Different,Muslim,Yes,Rural,Yes,Medium,No,0,Low,9,No,Yes,No
+2535,Love,28,Male,School,Same,Hindu,Yes,Urban,No,Low,No,2,Middle,17,No,Yes,No
+2536,Arranged,35,Male,Postgraduate,Different,Sikh,Partial,Urban,No,Medium,No,2,Middle,44,No,Yes,Yes
+2537,Arranged,24,Female,School,Different,Hindu,Partial,Urban,No,Medium,No,2,Middle,30,Yes,Yes,No
+2538,Arranged,34,Female,Graduate,Same,Hindu,Partial,Rural,No,High,No,1,Middle,37,No,No,No
+2539,Arranged,24,Male,Graduate,Same,Hindu,No,Urban,Yes,High,No,3,Middle,34,No,No,No
+2540,Love,30,Female,Graduate,Same,Others,Yes,Rural,No,Low,No,1,Middle,41,No,Yes,Yes
+2541,Love,27,Male,School,Same,Hindu,Yes,Urban,No,Medium,No,4,Low,49,Yes,No,Yes
+2542,Love,39,Female,Graduate,Same,Christian,Yes,Urban,Yes,Low,No,5,Low,48,Yes,No,Yes
+2543,Arranged,22,Male,Graduate,Same,Sikh,Yes,Rural,No,High,No,3,High,26,No,No,Yes
+2544,Arranged,18,Female,Graduate,Different,Muslim,Partial,Urban,Not Disclosed,Low,No,5,Middle,47,Yes,No,No
+2545,Love,35,Male,School,Same,Sikh,Partial,Urban,No,High,No,4,Middle,16,No,Yes,No
+2546,Arranged,23,Male,Graduate,Different,Christian,Yes,Rural,No,Low,No,5,Middle,41,No,Yes,No
+2547,Love,37,Female,Graduate,Different,Muslim,Yes,Urban,Yes,High,No,1,High,10,Yes,No,No
+2548,Arranged,38,Female,PhD,Same,Hindu,Yes,Urban,No,High,No,3,Middle,33,Yes,No,Yes
+2549,Love,26,Male,School,Same,Sikh,Yes,Urban,No,High,No,3,Middle,22,No,No,Yes
+2550,Arranged,37,Female,School,Same,Hindu,Yes,Rural,Yes,Medium,No,2,Middle,38,No,No,No
+2551,Love,18,Female,PhD,Same,Hindu,Yes,Urban,Not Disclosed,High,No,1,Low,8,No,Yes,Yes
+2552,Arranged,27,Male,Postgraduate,Same,Others,Partial,Urban,Yes,Low,No,0,High,33,Yes,No,No
+2553,Arranged,28,Female,Postgraduate,Same,Muslim,Yes,Rural,Yes,Medium,No,1,Low,20,Yes,No,Yes
+2554,Love,22,Male,Postgraduate,Same,Hindu,Yes,Rural,Yes,Low,No,5,Middle,30,Yes,No,No
+2555,Arranged,30,Female,Graduate,Same,Christian,Yes,Rural,Yes,Medium,Yes,2,Middle,20,No,Yes,Yes
+2556,Arranged,23,Male,PhD,Different,Hindu,Yes,Rural,No,Medium,No,4,Middle,8,No,Yes,Yes
+2557,Arranged,33,Female,Postgraduate,Same,Muslim,Yes,Urban,No,Medium,No,0,Low,14,Yes,No,No
+2558,Arranged,23,Male,Graduate,Same,Hindu,Partial,Rural,Yes,High,No,5,Middle,39,Yes,No,No
+2559,Arranged,28,Female,PhD,Same,Hindu,Yes,Urban,No,Medium,No,2,Middle,32,No,No,Yes
+2560,Love,27,Male,Graduate,Same,Hindu,Yes,Urban,No,High,No,2,High,5,Yes,No,No
+2561,Arranged,27,Female,Graduate,Same,Hindu,Yes,Urban,No,Medium,Yes,5,Middle,25,Yes,Yes,No
+2562,Love,29,Male,School,Same,Hindu,No,Rural,No,Low,No,1,Low,20,No,No,Yes
+2563,Love,30,Male,Postgraduate,Same,Others,Yes,Urban,No,High,No,3,Low,5,No,No,No
+2564,Love,27,Female,Graduate,Same,Hindu,Yes,Urban,No,Low,No,4,Middle,42,Yes,No,No
+2565,Arranged,18,Female,School,Same,Muslim,Yes,Urban,No,Low,No,5,High,5,No,No,No
+2566,Arranged,28,Male,Graduate,Same,Muslim,Yes,Urban,Not Disclosed,Medium,No,3,Middle,24,Yes,No,No
+2567,Arranged,26,Female,School,Same,Muslim,Yes,Urban,No,Medium,No,4,Middle,44,No,No,No
+2568,Arranged,18,Female,Graduate,Different,Hindu,Yes,Rural,Not Disclosed,High,No,2,High,24,Yes,Yes,No
+2569,Arranged,21,Female,School,Same,Hindu,Partial,Rural,No,High,No,4,Middle,5,Yes,No,No
+2570,Arranged,29,Female,Graduate,Same,Hindu,Yes,Rural,Yes,High,No,3,Low,48,Yes,No,No
+2571,Arranged,38,Female,School,Same,Hindu,Yes,Rural,Not Disclosed,Low,No,4,Low,25,Yes,Yes,No
+2572,Arranged,34,Male,School,Same,Christian,Yes,Urban,No,Medium,Yes,1,Middle,8,Yes,No,No
+2573,Arranged,21,Female,Graduate,Same,Muslim,Yes,Urban,No,Medium,No,3,High,39,Yes,No,Yes
+2574,Arranged,26,Female,Graduate,Same,Sikh,Yes,Urban,Not Disclosed,High,No,0,Middle,41,Yes,No,Yes
+2575,Love,36,Female,School,Different,Hindu,Yes,Urban,No,High,No,1,Low,27,No,No,Yes
+2576,Arranged,27,Male,School,Same,Hindu,Partial,Rural,Not Disclosed,Low,No,5,Middle,18,Yes,No,Yes
+2577,Love,34,Male,Postgraduate,Same,Muslim,No,Rural,No,High,No,4,Low,29,Yes,No,No
+2578,Arranged,29,Female,PhD,Same,Christian,Yes,Rural,No,Medium,No,0,Middle,7,No,No,No
+2579,Arranged,34,Female,Graduate,Different,Hindu,Yes,Urban,No,Medium,No,5,High,42,Yes,No,No
+2580,Arranged,25,Male,School,Same,Christian,Partial,Urban,No,Low,No,0,High,36,No,No,Yes
+2581,Love,28,Male,School,Same,Hindu,Yes,Rural,Yes,Low,No,1,Low,19,Yes,No,No
+2582,Love,24,Male,Postgraduate,Different,Muslim,Yes,Urban,No,Low,No,3,Low,33,Yes,No,No
+2583,Love,25,Female,PhD,Same,Hindu,Yes,Rural,Yes,Medium,No,3,Middle,41,No,No,No
+2584,Love,21,Male,Graduate,Same,Hindu,Yes,Rural,No,Medium,No,3,Middle,13,Yes,No,No
+2585,Love,29,Female,School,Same,Hindu,Yes,Urban,Yes,Low,No,3,Low,32,Yes,Yes,Yes
+2586,Arranged,30,Female,PhD,Different,Hindu,Yes,Urban,No,Medium,Yes,0,High,18,No,No,No
+2587,Love,20,Female,Graduate,Same,Hindu,Yes,Urban,Yes,Low,No,3,Low,15,Yes,No,No
+2588,Arranged,21,Female,School,Different,Muslim,Yes,Rural,No,High,No,0,Low,20,No,No,Yes
+2589,Love,18,Male,Graduate,Different,Hindu,No,Urban,Yes,Medium,No,4,Middle,33,Yes,No,Yes
+2590,Arranged,32,Female,Postgraduate,Same,Hindu,Yes,Urban,Yes,Medium,No,2,High,7,No,No,Yes
+2591,Arranged,28,Female,School,Same,Hindu,Partial,Rural,No,High,No,5,Middle,8,Yes,No,No
+2592,Arranged,22,Male,Graduate,Same,Hindu,Yes,Urban,No,Low,No,5,Middle,10,No,No,No
+2593,Arranged,22,Female,School,Different,Muslim,No,Rural,No,High,No,5,High,34,Yes,No,No
+2594,Love,29,Male,Graduate,Same,Hindu,Yes,Urban,Not Disclosed,Low,No,1,High,46,No,No,Yes
+2595,Arranged,24,Female,Graduate,Same,Hindu,Yes,Rural,Not Disclosed,Medium,No,3,Middle,19,Yes,No,Yes
+2596,Love,25,Male,Graduate,Different,Christian,Partial,Urban,Not Disclosed,Low,No,3,Middle,47,Yes,No,No
+2597,Love,21,Male,Graduate,Same,Hindu,Yes,Urban,No,Medium,No,5,Middle,45,No,Yes,Yes
+2598,Love,24,Female,Graduate,Different,Sikh,Yes,Rural,Yes,Low,No,1,High,15,Yes,No,No
+2599,Love,25,Male,Graduate,Same,Christian,Partial,Urban,No,High,No,4,Middle,16,Yes,No,Yes
+2600,Arranged,25,Male,Postgraduate,Different,Muslim,Yes,Urban,No,Medium,Yes,5,Middle,20,Yes,No,No
