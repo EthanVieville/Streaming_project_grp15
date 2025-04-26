@@ -1,128 +1,143 @@
-import org.apache.spark.sql.SparkSession
-import java.io.{File, PrintWriter}
-import java.nio.file.{Files, Paths, StandardCopyOption}
+import org.apache.spark.sql.{SparkSession, Row}
+import org.apache.spark.sql.types.{StructType, StructField, LongType}
+import org.apache.spark.sql.functions._
+import org.apache.hadoop.fs.{FileSystem, Path, RawLocalFileSystem}
 import scala.io.Source
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import java.io.{File, PrintWriter}
 import java.util.Properties
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 
 object MrSplitMyFileIntoCsv {
+// Peut etre utiliser un windows function avec gestion ru rax numb eravec gestin du timestamp
+  // Substract sur le df initial du nouveau df bien variabiliser le nb de batch
 
-  private val baseDir = System.getProperty("user.dir")
-  private val scriptDir = baseDir + "/src/main/scala/"
+  // Gestion du fichier de progress a refaire en spark
+  private val progressFile = "src/main/scala/OUTPUT/progress.txt"
 
-  private val inputDir = scriptDir + "INPUT/"
-  private val outputDir = scriptDir + "OUTPUT/"
-
-  private val sourceFileName = "marriage_data_india.csv"
-  private val progressFilePath = scriptDir + "progress.txt"
-
-  private val numOfLines = 100
-  private val kafkaTopic = "your-kafka-topic"
-  private val kafkaBootstrapServers = "localhost:9092"
-
-  private def readProgress(): (Int, Int) = {
-    if (!Files.exists(Paths.get(progressFilePath))) return (0, 0)
-    val lines = Source.fromFile(progressFilePath).getLines().toList
-    val currentIndex = if (lines.nonEmpty) lines.head.toInt else 0
-    val chunkIndex = if (lines.length > 1) lines(1).toInt else 0
-    (currentIndex, chunkIndex)
+  private def readProgress(): Int = {
+    val f = new File(progressFile)
+    if (!f.exists) 0
+    else {
+      val lines = Source.fromFile(f).getLines().toList
+      if (lines.nonEmpty) lines.head.toInt else 0
+    }
   }
 
-  private def writeProgress(lineCount: Int, chunkIndex: Int): Unit = {
-    val writer = new PrintWriter(new File(progressFilePath))
-    writer.println(lineCount)
-    writer.println(chunkIndex)
-    writer.close()
-  }
-
-  private def getOutputFileName(index: Int): String = {
-    val formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
-    val timestamp = LocalDateTime.now().format(formatter)
-    s"$outputDir/chunk_${index}_$timestamp.csv"
-  }
-
-  private def sendToKafka(topic: String, message: String): Unit = {
-    val props = new Properties()
-    props.put("bootstrap.servers", kafkaBootstrapServers)
-    props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
-    props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
-
-    val producer = new KafkaProducer[String, String](props)
-    val record = new ProducerRecord[String, String](topic, null, message)
-    producer.send(record)
-    producer.close()
+  private def writeProgress(nextChunkId: Int): Unit = {
+    val pw = new PrintWriter(new File(progressFile))
+    pw.println(nextChunkId)
+    pw.close()
   }
 
   def main(args: Array[String]): Unit = {
-    System.setProperty("hadoop.home.dir", "C:\\hadoop")
-    System.setProperty("spark.hadoop.io.nativeio.enabled", "false")
-    System.setProperty("HADOOP_USER_NAME", "root")
-
+    // Config de SPARK
     val spark = SparkSession.builder()
-      .appName("FileSplitter")
+      .appName("MrSplitMyFileIntoCsv")
       .master("local[*]")
       .getOrCreate()
 
-    spark.conf.set("spark.hadoop.io.native.lib.available", "false")
+    spark.sparkContext.setLogLevel("ERROR")
+    // Empecher la creation des fichier checkpoint CRC
+    spark.sparkContext.hadoopConfiguration.set(
+      "fs.file.impl",
+      classOf[RawLocalFileSystem].getName
+    )
+    import spark.implicits._
 
-    val sourcePath = inputDir + sourceFileName
+    // Param doivent bouger vers un fichier
+    val inputPath     = "src/main/scala/INPUT/marriage_data_india.csv"
+    val outputDir     = "src/main/scala/OUTPUT/"
+    val chunkSize     = 100        // Lignes par chunk
+    val pauseMs       = 2000       // Temps entre les chunk (SUpp 300ms temps de gestion chunk pour le moment)
+    val kafkaBrokers  = "localhost:9092"
+    val kafkaTopic    = "your-kafka-topic"
 
-    if (!Files.exists(Paths.get(sourcePath))) {
-      println(s"Fichier source $sourcePath non trouvé.")
+    // Mise en cache du CSV
+    val rawDF = spark.read
+      .option("header", "true")
+      .csv(inputPath)
+      .cache()
+
+    println(rawDF.count()) // Astuce anti lazy ajouter un print
+
+    // Index incremental pour gére rle num de chunk sans rename après
+    val rddWithIdx = rawDF.rdd.zipWithIndex().map {
+      case (row, idx) => Row.fromSeq(row.toSeq :+ idx)
+    }
+    val schemaWithIdx = StructType(rawDF.schema.fields :+ StructField("idx", LongType, nullable = false))
+    val indexedDF = spark.createDataFrame(rddWithIdx, schemaWithIdx)
+
+    // Gestion des deux
+    val withChunksDF = indexedDF
+      .withColumn("chunkId", floor(col("idx") / chunkSize).cast("int"))
+      .cache()
+    println(withChunksDF.count()) // Astuce anti lazy
+
+    // Gestion du nombres total de chunk
+    val totalRows = withChunksDF.agg(max("idx")).as[Long].head + 1
+    val numChunks = Math.ceil(totalRows.toDouble / chunkSize).toInt
+
+    // Reprend sdepuis le dernier chunk dans le progress
+    var startChunk = readProgress()
+    if (startChunk >= numChunks) {
+      println(s"Les $numChunks chunk ont déjà était fait.")
+      spark.stop()
       return
     }
 
-    val df = spark.read
-      .option("header", "true")
-      .csv(sourcePath)
+    // Partie KAFKA voir avec Charles
+    val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
+    val kafkaProps = new Properties()
+    kafkaProps.put("bootstrap.servers", kafkaBrokers)
+    kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+    kafkaProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
 
-    val (savedLineIndex, savedChunkCount) = readProgress()
-    var currentIndex = savedLineIndex
-    var chunkCount = savedChunkCount
+    // Boucle par chunk
+    for (chunkId <- startChunk until numChunks) {
+      val t0 = System.nanoTime()
 
-    println(s"Commence à partir de la ligne $currentIndex, numéro de chunk #$chunkCount")
+      // Récupère en cach pour le chunk en cours
+      val chunkDF = withChunksDF
+        .filter($"chunkId" === chunkId)
+        .drop("idx", "chunkId")
 
-    while (currentIndex < df.count()) {
-      val startTime = System.nanoTime()
-
-      val linesToWrite = df.limit(currentIndex + numOfLines).except(df.limit(currentIndex))
-      val outputFileName = getOutputFileName(chunkCount)
-
-      val tempDirPath = outputDir + s"temp_chunk_$chunkCount"
-      linesToWrite.coalesce(1).write
-        .mode("overwrite")
+      // Ecris le chunk dans le nouveau CSV
+      val tmpPath = new Path(s"$outputDir/temp/chunk_$chunkId")
+      chunkDF.coalesce(1)
+        .write.mode("overwrite")
         .option("header", "true")
-        .csv(tempDirPath)
+        .csv(tmpPath.toString)
 
-      val tempDir = new File(tempDirPath)
-      val partFile = tempDir.listFiles().find(_.getName.startsWith("part-")).get
+      // Gestion des .part pour les retirer
+      val part = fs.listStatus(tmpPath)
+        .find(_.getPath.getName.startsWith("part-"))
+        .get
+        .getPath
+      val finalPath = new Path(s"$outputDir/chunk_$chunkId.csv")
+      fs.rename(part, finalPath)
+      fs.delete(tmpPath, true)
 
-      val finalFile = new File(outputDir + s"chunk_${chunkCount}.csv")
-      Files.move(partFile.toPath, finalFile.toPath, StandardCopyOption.REPLACE_EXISTING)
+      // Envoie des chunk a Kafka
+      chunkDF.toJSON
+        .rdd
+        .foreachPartition { iter: Iterator[String] =>
+          val producer = new KafkaProducer[String, String](kafkaProps)
+          iter.foreach { json =>
+            producer.send(new ProducerRecord[String, String](kafkaTopic, json))
+          }
+          producer.close()
+        }
 
-      // Lire le contenu du fichier pour l’envoyer dans Kafka
-      val chunkContent = Source.fromFile(finalFile).getLines().mkString("\n")
-      sendToKafka(kafkaTopic, chunkContent)
+      // Mise a jour progress après la gestion du chunk (En cas de plantage il peut bien reprendre au dernier chunk utilisé)
+      writeProgress(chunkId + 1)
 
-      tempDir.listFiles().foreach(_.delete())
-      tempDir.delete()
+      val durationMs = (System.nanoTime() - t0) / 1e6
+      println(f"[Chunk #$chunkId] traité en $durationMs%.2f ms")
 
-      val endTime = System.nanoTime()
-      val durationMs = (endTime - startTime) / 1000000.0
-
-      currentIndex += numOfLines
-      chunkCount += 1
-      writeProgress(currentIndex, chunkCount)
-
-      println(s"Ecriture de $outputFileName contenant ${linesToWrite.count()} lignes.")
-      println(f"Découpage en $durationMs%.3f ms. Envoi au topic Kafka. Attente avant le prochain fichier...")
-
-      Thread.sleep(200)
+      Thread.sleep(pauseMs)
     }
 
-    println("Tous les fichiers ont été traités.")
+    println(s"Les $numChunks ont étaitent traités et envoyés vers Kafka.")
     spark.stop()
   }
 }
