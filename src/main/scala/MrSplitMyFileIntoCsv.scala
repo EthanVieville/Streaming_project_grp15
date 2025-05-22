@@ -8,7 +8,7 @@ import java.util.Properties
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 
 object MrSplitMyFileIntoCsv {
-// Peut etre utiliser un windows function avec gestion ru rax numb eravec gestin du timestamp
+  // Peut etre utiliser un windows function avec gestion ru rax numb eravec gestin du timestamp
   // Substract sur le df initial du nouveau df bien variabiliser le nb de batch
 
   // Gestion du fichier de progress a refaire en spark
@@ -36,7 +36,7 @@ object MrSplitMyFileIntoCsv {
       .master("local[*]")
       .getOrCreate()
 
-    spark.sparkContext.setLogLevel("ERROR")
+    spark.sparkContext.setLogLevel("WARN")
     // Empecher la creation des fichier checkpoint CRC
     spark.sparkContext.hadoopConfiguration.set(
       "fs.file.impl",
@@ -58,7 +58,7 @@ object MrSplitMyFileIntoCsv {
       .csv(inputPath)
       .cache()
 
-    println(rawDF.count()) // Astuce anti lazy ajouter un print
+    // println(rawDF.count()) // Astuce anti lazy ajouter un print
 
     // Index incremental pour gére rle num de chunk sans rename après
     val rddWithIdx = rawDF.rdd.zipWithIndex().map {
@@ -71,7 +71,7 @@ object MrSplitMyFileIntoCsv {
     val withChunksDF = indexedDF
       .withColumn("chunkId", floor(col("idx") / chunkSize).cast("int"))
       .cache()
-    println(withChunksDF.count()) // Astuce anti lazy
+    // println(withChunksDF.count()) // Astuce anti lazy
 
     // Gestion du nombres total de chunk
     val totalRows = withChunksDF.agg(max("idx")).as[Long].head + 1
