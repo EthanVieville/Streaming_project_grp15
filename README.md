@@ -11,4 +11,13 @@ Utiliser JAVA11 pour le Projet
 
 Accès à la console SPARK:
 http://localhost:4040/jobs/
+-----
+
+
+VIZ : 
+
+cd streamlit-app-py
+
+streamlit run app.py
+
 

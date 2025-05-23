@@ -1,6 +1,7 @@
 import org.apache.spark.sql.functions.from_json
 import org.apache.spark.sql.{ForeachWriter, Row, SparkSession}
-
+import org.apache.spark.sql.types._
+import org.apache.spark.sql.functions.from_json
 import java.sql.{Connection, DriverManager, PreparedStatement}
 
 object KafkaToSQLiteConsumer {
@@ -28,29 +29,63 @@ object KafkaToSQLiteConsumer {
 
     import spark.implicits._
 
-    // Récupération du message JSON sous forme de string
-    val jsonDF = df.selectExpr("CAST(value AS STRING)").as[String]
+    // Définition explicite du schéma
+    val schema = StructType(Seq(
+      StructField("ID", StringType),
+      StructField("Marriage_Type", StringType),
+      StructField("Age_at_Marriage", StringType),
+      StructField("Gender", StringType),
+      StructField("Education_Level", StringType),
+      StructField("Caste_Match", StringType),
+      StructField("Religion", StringType),
+      StructField("Parental_Approval", StringType),
+      StructField("Urban_Rural", StringType),
+      StructField("Dowry_Exchanged", StringType),
+      StructField("Marital_Satisfaction", StringType),
+      StructField("Divorce_Status", StringType),
+      StructField("Children_Count", StringType),
+      StructField("Income_Level", StringType),
+      StructField("Years_Since_Marriage", StringType),
+      StructField("Spouse_Working", StringType),
+      StructField("Inter-Caste", StringType),
+      StructField("Inter-Religion", StringType)
+    ))
 
-    // Parsing JSON vers DataFrame avec schéma
-    val schema = spark.read
-      .option("header", true)
-      .json(Seq("""{"ID":"1","Marriage_Type":"Love","Age_at_Marriage":"23","Gender":"Male","Education_Level":"Graduate","Caste_Match":"Different","Religion":"Hindu","Parental_Approval":"No","Urban_Rural":"Urban","Dowry_Exchanged":"No","Marital_Satisfaction":"Medium","Divorce_Status":"Yes","Children_Count":"5","Income_Level":"Middle","Years_Since_Marriage":"34","Spouse_Working":"No","Inter-Caste":"No","Inter-Religion":"No"}""").toDS)
-      .schema
-
-    val parsedDF = jsonDF.selectExpr("CAST(value AS STRING) as json")
+    val orderedDF = df
+      .selectExpr("CAST(value AS STRING) as json")
       .select(from_json($"json", schema).as("data"))
-      .select("data.*")
+      .select(
+        $"data.ID",
+        $"data.Marriage_Type",
+        $"data.Age_at_Marriage",
+        $"data.Gender",
+        $"data.Education_Level",
+        $"data.Caste_Match",
+        $"data.Religion",
+        $"data.Parental_Approval",
+        $"data.Urban_Rural",
+        $"data.Dowry_Exchanged",
+        $"data.Marital_Satisfaction",
+        $"data.Divorce_Status",
+        $"data.Children_Count",
+        $"data.Income_Level",
+        $"data.Years_Since_Marriage",
+        $"data.Spouse_Working",
+        $"data.`Inter-Caste`",
+        $"data.`Inter-Religion`"
+      )
 
     // Writer personnalisé pour insérer dans SQLite
     val sqliteWriter = new ForeachWriter[Row] {
       var connection: Connection = _
       var statement: PreparedStatement = _
 
+
       def open(partitionId: Long, epochId: Long): Boolean = {
         connection = DriverManager.getConnection("jdbc:sqlite:marriages.db")
         val createTableSQL =
           """CREATE TABLE IF NOT EXISTS marriages (
-            ID TEXT,
+            ID TEXT PRIMARY KEY,
             Marriage_Type TEXT,
             Age_at_Marriage TEXT,
             Gender TEXT,
@@ -71,7 +106,7 @@ object KafkaToSQLiteConsumer {
           )"""
         connection.createStatement().execute(createTableSQL)
         val insertSQL =
-          """INSERT INTO marriages VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+          """INSERT OR IGNORE INTO marriages VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
         statement = connection.prepareStatement(insertSQL)
         true
       }
@@ -90,10 +125,11 @@ object KafkaToSQLiteConsumer {
     }
 
     // Stream vers SQLite
-    val query = parsedDF.writeStream
+    val query = orderedDF.writeStream
       .foreach(sqliteWriter)
       .outputMode("append")
       .start()
+
 
     query.awaitTermination()
   }
