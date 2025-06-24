@@ -1,0 +1,61 @@
+
+
+Problématique : ...l'amour…?
+
+
+Stats aggréger à sortir : 
+
+---
+
+Est ce les mariages arrangés c'est tôt ? mariage arrangé = solution, mais est-ce que ca aide à se marier plus tôt ? pour ceux qui veulent se marier tôt 
+
+Moyenne d'age au mariage par type de mariage
+Sur des périodes de 5 ans ? genre 20-25 ? 
+tranche d'age
+
+
+---
+
+
+Le type d'éducation ? si t'es bien éduqué est ce que mariage arrangé ? est ce que les gens cons ont intérêts à se tourner vers le mariage arrangé dcp ? 
+
+Répartition d'éducation level par type de mariage
+
+
+--- 
+
+La religion mdr ? 
+
+Quelle religion divorce le plus ? le moins ? 
+Quelle religion est la plus romantique ? donc ceux par love qui ont pas divorcé ? 
+
+
+répartition religion par divorce 
+
+
+--- 
+
+L'approbation des parents 
+love vs arranged
+
+répartition de parental approval par type de mariage
+
+---
+
+milieu 
+
+rural / urbain
+
+à croiser avec le type d'éducation
+et le type de mariage pour sortir des tendances de niveau de vie
+
+
+--- 
+
+dowry_exchange
+
+Est ce que la dot à beaucoup plus de parantal approval ? 
+
+Répartition dot par parantal approval
+
+--
