@@ -1,11 +1,12 @@
 import org.apache.spark.sql.functions.from_json
-import org.apache.spark.sql.{ForeachWriter, Row, SparkSession}
+import org.apache.spark.sql.{DataFrame, ForeachWriter, Row, SparkSession}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions.from_json
 
 import java.io.FileInputStream
 import java.sql.{Connection, DriverManager, PreparedStatement}
 import java.util.Properties
+import StatisticsMaker._
 
 object KafkaToSQLiteConsumer {
 
@@ -48,6 +49,7 @@ object KafkaToSQLiteConsumer {
     initConn.createStatement().execute(createTableSQL)
     initConn.close()
 
+
     // Définition explicite du schéma
     val schema = StructType(Seq(
       StructField("ID", StringType),
@@ -75,7 +77,7 @@ object KafkaToSQLiteConsumer {
       .format("kafka")
       .option("kafka.bootstrap.servers", props.getProperty("kafka.brokers"))
       .option("subscribe", props.getProperty("kafka.topic"))
-      .option("startingOffsets", "earliest")
+      .option("startingOffsets", "latest") // earliest / latest
       .load()
 
     import spark.implicits._
@@ -103,6 +105,8 @@ object KafkaToSQLiteConsumer {
         $"data.`Inter-Caste`",
         $"data.`Inter-Religion`"
       )
+
+
 
     // Writer personnalisé pour insérer dans SQLite
     val sqliteWriter = new ForeachWriter[Row] {
@@ -135,6 +139,24 @@ object KafkaToSQLiteConsumer {
       .start()
 
 
+    // ======= STATISTICS ========
+
+    val satisfactionStats = satisfactionByMarriageType(orderedDF)
+
+    val satisfactionQuery = satisfactionStats.writeStream
+      .outputMode("complete")
+      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+        writeStatToSQLite(batchDF, "satisfactionByMarriageType", props.getProperty("sqlite.path"))
+      }
+      .start()
+
+
+
+
+    // ===========================
+
     query.awaitTermination()
+
+    satisfactionQuery.awaitTermination()
   }
 }

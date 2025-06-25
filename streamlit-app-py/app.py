@@ -1,11 +1,50 @@
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
+
 import pandas as pd
 import sqlite3
 import matplotlib.pyplot as plt
 import base64
 
 
+count = st_autorefresh(interval=5000, limit=None, key="autorefresh")
+
+
 st.title("LOVE IS LOVE IS HATE IS LOVE YEAH INDIAAAAAA YALAAAA")
+
+st.markdown(
+    """
+    <script>
+    window.onscroll = function() {
+        sessionStorage.setItem("scrollPosition", window.scrollY);
+    };
+
+    window.onload = function() {
+        var scrollPos = sessionStorage.getItem("scrollPosition");
+        if (scrollPos) {
+            window.scrollTo(0, parseInt(scrollPos));
+        }
+    };
+    </script>
+    """, unsafe_allow_html=True
+)
+
+st.markdown(
+    """
+    <style>
+    /* Cache le menu Streamlit (≡) */
+    #MainMenu {visibility: hidden;}
+
+    /* Cache le footer Streamlit */
+    footer {visibility: hidden;}
+
+    /* Optionnel : cache aussi le bandeau en haut si tu veux quelque chose de clean */
+    header {visibility: hidden;}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 
 
 # INTEGRATION DE RAJ 
@@ -73,3 +112,33 @@ fig3, ax3 = plt.subplots()
 cross_tab.T.plot(kind='bar', stacked=True, ax=ax3)
 ax3.set_ylabel("Total")
 st.pyplot(fig3)
+
+
+# FROM query 
+
+st.title("Statistiques Satisfaction par Type de Mariage")
+
+# Connexion à la base SQLite
+conn = sqlite3.connect("../marriages.db")
+
+# Lire la table des stats (celle mise à jour par Spark)
+query = "SELECT * FROM satisfactionByMarriageType"
+df_stats = pd.read_sql_query(query, conn)
+
+conn.close()
+
+# Afficher le tableau des stats
+st.subheader("Données de satisfaction par type de mariage")
+st.dataframe(df_stats)
+
+# Création du graphique (barres empilées par niveau de satisfaction)
+pivot_df = df_stats.pivot(index='Marriage_Type', columns='Marital_Satisfaction', values='count').fillna(0)
+
+fig, ax = plt.subplots(figsize=(10,6))
+pivot_df.plot(kind='bar', stacked=True, ax=ax, color=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728'])
+
+ax.set_ylabel("Nombre de personnes")
+ax.set_title("Répartition de la satisfaction par type de mariage")
+ax.legend(title="Satisfaction")
+
+st.pyplot(fig)
