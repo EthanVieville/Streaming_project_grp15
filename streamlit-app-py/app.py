@@ -7,27 +7,31 @@ import matplotlib.pyplot as plt
 import base64
 
 
-count = st_autorefresh(interval=5000, limit=None, key="autorefresh")
+#count = st_autorefresh(interval=5000, limit=None, key="autorefresh")
 
 
 st.title("LOVE IS LOVE IS HATE IS LOVE YEAH INDIAAAAAA YALAAAA")
 
-st.markdown(
-    """
-    <script>
-    window.onscroll = function() {
-        sessionStorage.setItem("scrollPosition", window.scrollY);
-    };
 
-    window.onload = function() {
-        var scrollPos = sessionStorage.getItem("scrollPosition");
-        if (scrollPos) {
-            window.scrollTo(0, parseInt(scrollPos));
-        }
-    };
-    </script>
-    """, unsafe_allow_html=True
-)
+#st.markdown(
+#    """
+#    <script>
+#    window.onscroll = function() {
+#        sessionStorage.setItem("scrollPosition", window.scrollY);
+#    };
+#
+#    window.onload = function() {
+#        var scrollPos = sessionStorage.getItem("scrollPosition");
+#        if (scrollPos) {
+#            window.scrollTo(0, parseInt(scrollPos));
+#        }
+#    };
+#    </script>
+#    """, unsafe_allow_html=True
+#)
+
+
+
 
 st.markdown(
     """
@@ -77,12 +81,34 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# ===================== GET DATA ==================================
 # FULL GPT GENERATED, yeah. 
 
 # Connexion BDD SQLite
 conn = sqlite3.connect("../marriages.db")
+# SELECT * for all the basic dataset
 df = pd.read_sql_query("SELECT * FROM marriages", conn)
+
+# Lire la table des stats (celle mise à jour par Spark)
+#query = "SELECT * FROM satisfactionByMarriageType"
+#df_stats = pd.read_sql_query(query, conn)
+
+# Satisfaction level for arranged marriage N not divorced (yet)
+query = """
+SELECT * FROM satisfactionByMarriageType
+WHERE updated_at = (SELECT MAX(updated_at) FROM satisfactionByMarriageType)
+"""
+df_stats = pd.read_sql_query(query, conn)
+
+# Satisfaction level for age (at marriage) bracket, not divorced
+query = """
+SELECT * FROM satisfactionByAgeBracket
+WHERE updated_at = (SELECT MAX(updated_at) FROM satisfactionByAgeBracket)
+"""
+df_age = pd.read_sql_query(query, conn)
+
 conn.close()
+# =====================================================================
 
 # Transfo data supplémentaire ...
 df['Age_at_Marriage'] = pd.to_numeric(df['Age_at_Marriage'], errors='coerce')
@@ -114,18 +140,10 @@ ax3.set_ylabel("Total")
 st.pyplot(fig3)
 
 
+#=======================================
 # FROM query 
 
 st.title("Statistiques Satisfaction par Type de Mariage")
-
-# Connexion à la base SQLite
-conn = sqlite3.connect("../marriages.db")
-
-# Lire la table des stats (celle mise à jour par Spark)
-query = "SELECT * FROM satisfactionByMarriageType"
-df_stats = pd.read_sql_query(query, conn)
-
-conn.close()
 
 # Afficher le tableau des stats
 st.subheader("Données de satisfaction par type de mariage")
@@ -141,4 +159,19 @@ ax.set_ylabel("Nombre de personnes")
 ax.set_title("Répartition de la satisfaction par type de mariage")
 ax.legend(title="Satisfaction")
 
+st.pyplot(fig)
+
+# =========
+st.subheader("Répartition satisfaction par tranche d'âge au mariage")
+st.dataframe(df_age)
+
+pivot_age = df_age.pivot(index='age_bracket', columns='Marital_Satisfaction', values='count').fillna(0)
+pivot_age = pivot_age.apply(pd.to_numeric, errors='coerce').fillna(0)
+
+
+fig, ax = plt.subplots(figsize=(10,6))
+pivot_age.plot(kind='bar', stacked=True, ax=ax, color=['#1f77b4', '#ff7f0e', '#2ca02c'])
+ax.set_ylabel("Nombre de personnes")
+ax.set_title("Satisfaction par tranche d'âge au moment du mariage")
+ax.legend(title="Satisfaction")
 st.pyplot(fig)

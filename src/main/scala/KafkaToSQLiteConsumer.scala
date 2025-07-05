@@ -143,6 +143,7 @@ object KafkaToSQLiteConsumer {
 
     val satisfactionStats = satisfactionByMarriageType(orderedDF)
 
+    /*
     val satisfactionQuery = satisfactionStats.writeStream
       .outputMode("complete")
       .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
@@ -150,13 +151,32 @@ object KafkaToSQLiteConsumer {
       }
       .start()
 
+     */
 
+    val satisfactionQuery = satisfactionStats.writeStream
+      .outputMode("complete")
+      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+        writeStatToSQLite(batchDF, "satisfactionByMarriageType", props.getProperty("sqlite.path"))
+      }
+      .start()
 
+    /*
+    val ageBracketStats = satisfactionByAgeBracket(orderedDF)
+
+    val ageBracketQuery = ageBracketStats.writeStream
+      .outputMode("complete")
+      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+        writeStatToSQLite(batchDF, "satisfactionByAgeBracket", props.getProperty("sqlite.path"))
+      }
+      .start()
+    */
 
     // ===========================
 
     query.awaitTermination()
 
     satisfactionQuery.awaitTermination()
+    //ageBracketQuery.awaitTermination()
+
   }
 }
