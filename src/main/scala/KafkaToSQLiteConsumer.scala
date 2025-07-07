@@ -33,9 +33,8 @@ object KafkaToSQLiteConsumer {
       .getOrCreate()
 
     spark.sparkContext.setLogLevel("WARN")
+    import spark.implicits._
 
-
-    //val initConn = DriverManager.getConnection(pgUrl, pgUser, pgPwd)
 
     // DROP BEFORE INSERT
     val drop = 1
@@ -45,17 +44,12 @@ object KafkaToSQLiteConsumer {
     executeSqlFile("src/config/schema.sql", pgUrl, pgUser, pgPwd)
 
     // === STREAM KAFKA
-    val df = spark.readStream
+    val parsedDF = spark.readStream
       .format("kafka")
       .option("kafka.bootstrap.servers", props.getProperty("kafka.brokers"))
       .option("subscribe", props.getProperty("kafka.topic"))
       .option("startingOffsets", "latest") // earliest / latest
       .load()
-
-    import spark.implicits._
-
-    // On cast sans schema explicite
-    val parsedDF = df
       .selectExpr("CAST(value AS STRING) as json")
       .select(from_json($"json", marriageSchema).as("data")) // on utilise bien le schéma importé
       .select("data.*")
@@ -97,18 +91,142 @@ object KafkaToSQLiteConsumer {
 
     // ======= STATISTICS ========
 
-    //val satisfactionStats = satisfactionByMarriageType(orderedDF)
+    // -1
+    val stats = satisfactionByMarriageType(parsedDF)
 
-    val statQuery = parsedDF.writeStream
-      .outputMode("append")
-      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
-        val stats = satisfactionByMarriageType(batchDF)
-        writeStatToPostgres(stats, "satisfaction_by_marriage_type", pgUrl, pgUser, pgPwd)
+    val statsSatisfactionByMariageType = stats.writeStream
+      .outputMode("complete")
+      .option("checkpointLocation", "checkpoints/statistics/satisfactionMariage")
+      .foreachBatch { (batchDF: DataFrame,  batchId: Long) =>
+        writeStatToPostgres(batchDF, "satisfaction_by_marriage_type", pgUrl, pgUser, pgPwd,  overwrite = true)
       }
       .start()
 
+    // -2
+    val statsByAge = satisfactionByAgeRange(parsedDF)
+
+    val statSatisfactionByAge = statsByAge.writeStream
+      .outputMode("complete")
+      .option("checkpointLocation", "checkpoints/statistics/satisfactionAgeRange")
+      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+        writeStatToPostgres(batchDF, "satisfaction_by_age_range", pgUrl, pgUser, pgPwd, overwrite = true)
+      }
+      .start()
+
+    // -3
+    val statsByEducation = satisfactionByEducationLevel(parsedDF)
+
+    val statSatisfactionByEducation = statsByEducation.writeStream
+      .outputMode("complete")
+      .option("checkpointLocation", "checkpoints/statistics/satisfactionEducationLevel")
+      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+        writeStatToPostgres(batchDF, "satisfaction_by_education_level", pgUrl, pgUser, pgPwd, overwrite = true)
+      }
+      .start()
+
+    // -4
+    val statsByReligion = satisfactionByReligionArranged(parsedDF)
+
+    val statSatisfactionByReligion = statsByReligion.writeStream
+      .outputMode("complete")
+      .option("checkpointLocation", "checkpoints/statistics/satisfactionReligionArranged")
+      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+        writeStatToPostgres(batchDF, "satisfaction_by_religion_arranged", pgUrl, pgUser, pgPwd, overwrite = true)
+      }
+      .start()
+
+    // -5
+    val statsInterReligion = satisfactionByInterReligion(parsedDF)
+
+    val statSatisfactionInterReligion = statsInterReligion.writeStream
+      .outputMode("complete")
+      .option("checkpointLocation", "checkpoints/statistics/satisfactionInterReligion")
+      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+        writeStatToPostgres(batchDF, "satisfaction_by_inter_religion", pgUrl, pgUser, pgPwd, overwrite = true)
+      }
+      .start()
+
+    // -6
+    val statsIncomeLevel = satisfactionByIncomeLevel(parsedDF)
+
+    val statSatisfactionIncomeLevel = statsIncomeLevel.writeStream
+      .outputMode("complete")
+      .option("checkpointLocation", "checkpoints/statistics/satisfactionIncomeLevel")
+      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+        writeStatToPostgres(batchDF, "satisfaction_by_income_level", pgUrl, pgUser, pgPwd, overwrite = true)
+      }
+      .start()
+
+    // -7
+    val statsParentalApproval = satisfactionByParentalApproval(parsedDF)
+
+    val statSatisfactionParentalApproval = statsParentalApproval.writeStream
+      .outputMode("complete")
+      .option("checkpointLocation", "checkpoints/statistics/satisfactionParentalApproval")
+      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+        writeStatToPostgres(batchDF, "satisfaction_by_parental_approval", pgUrl, pgUser, pgPwd, overwrite = true)
+      }
+      .start()
+
+    // -8
+    val statsDivorcesByReligion = divorcesByReligion(parsedDF)
+
+    val statQueryDivorcesByReligion = statsDivorcesByReligion.writeStream
+      .outputMode("complete")
+      .option("checkpointLocation", "checkpoints/statistics/divorcesByReligion")
+      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+        writeStatToPostgres(batchDF, "divorces_by_religion", pgUrl, pgUser, pgPwd, overwrite = true)
+      }
+      .start()
+
+    // -9
+    val statsDivorcesByEducation = divorcesByEducation(parsedDF)
+
+    val statQueryDivorcesByEducation = statsDivorcesByEducation.writeStream
+      .outputMode("complete")
+      .option("checkpointLocation", "checkpoints/statistics/divorcesByEducation")
+      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+        writeStatToPostgres(batchDF, "divorces_by_education", pgUrl, pgUser, pgPwd, overwrite = true)
+      }
+      .start()
+
+    // -10
+    val statsDivorcesBySpouseWorking = divorcesBySpouseWorking(parsedDF)
+
+    val statQueryDivorcesBySpouseWorking = statsDivorcesBySpouseWorking.writeStream
+      .outputMode("complete")
+      .option("checkpointLocation", "checkpoints/statistics/divorcesBySpouseWorking")
+      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+        writeStatToPostgres(batchDF, "divorces_by_spouse_working", pgUrl, pgUser, pgPwd, overwrite = true)
+      }
+      .start()
+
+    // -11
+    val statsChildrenByProfile = childrenCountByIdealProfile(parsedDF)
+
+    val statQueryChildrenByProfile = statsChildrenByProfile.writeStream
+      .outputMode("complete")
+      .option("checkpointLocation", "checkpoints/statistics/childrenByProfile")
+      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+        writeStatToPostgres(batchDF, "children_count_by_profile", pgUrl, pgUser, pgPwd, overwrite = true)
+      }
+      .start()
+
+
     InsertFullDataSet.awaitTermination()
-    statQuery.awaitTermination()
+    statsSatisfactionByMariageType.awaitTermination()
+    statSatisfactionByAge.awaitTermination()
+    statSatisfactionByEducation.awaitTermination()
+    statSatisfactionByReligion.awaitTermination()
+    statSatisfactionInterReligion.awaitTermination()
+    statSatisfactionIncomeLevel.awaitTermination()
+    statSatisfactionParentalApproval.awaitTermination()
+    statQueryDivorcesByReligion.awaitTermination()
+    statQueryDivorcesByEducation.awaitTermination()
+    statQueryDivorcesBySpouseWorking.awaitTermination()
+    statQueryChildrenByProfile.awaitTermination()
+
+
 
   }
 }
