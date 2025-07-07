@@ -1,78 +1,50 @@
-import org.apache.spark.sql.functions.from_json
-import org.apache.spark.sql.{DataFrame, ForeachWriter, Row, SparkSession}
-import org.apache.spark.sql.types._
-import org.apache.spark.sql.functions.from_json
-
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.{DataFrame, ForeachWriter, Row}
 import java.io.FileInputStream
 import java.sql.{Connection, DriverManager, PreparedStatement}
 import java.util.Properties
+
 import StatisticsMaker._
+import load_schema._
+import schemas.schemas._
+
+import org.apache.spark.sql.streaming.Trigger
 
 object KafkaToSQLiteConsumer {
 
   def main(args: Array[String]): Unit = {
 
-    // LOAD PROPERTIES ====
+    // === LOAD PROPERTIES ====
     val props = new Properties()
     val stream = new FileInputStream("src/config/app.properties")
     props.load(stream)
 
+    // === POSTGRE ACCESS ===
+    val pgUrl = props.getProperty("postgres.url")
+    val pgUser = props.getProperty("postgres.user")
+    val pgPwd = props.getProperty("postgres.password")
+
+
+    // === Init Spark ===
     val spark = SparkSession.builder()
-      .appName("KafkaToSQLiteConsumer")
+      .appName("KafkaToPostgreConsumer")
       .master("local[*]")
       .getOrCreate()
 
     spark.sparkContext.setLogLevel("WARN")
 
-    val initConn = DriverManager.getConnection(s"jdbc:sqlite:${props.getProperty("sqlite.path")}")
-    val createTableSQL =
-      """CREATE TABLE IF NOT EXISTS marriages (
-        ID TEXT PRIMARY KEY,
-        Marriage_Type TEXT,
-        Age_at_Marriage TEXT,
-        Gender TEXT,
-        Education_Level TEXT,
-        Caste_Match TEXT,
-        Religion TEXT,
-        Parental_Approval TEXT,
-        Urban_Rural TEXT,
-        Dowry_Exchanged TEXT,
-        Marital_Satisfaction TEXT,
-        Divorce_Status TEXT,
-        Children_Count TEXT,
-        Income_Level TEXT,
-        Years_Since_Marriage TEXT,
-        Spouse_Working TEXT,
-        `Inter-Caste` TEXT,
-        `Inter-Religion` TEXT
-      )"""
-    initConn.createStatement().execute(createTableSQL)
-    initConn.close()
 
+    //val initConn = DriverManager.getConnection(pgUrl, pgUser, pgPwd)
 
-    // Définition explicite du schéma
-    val schema = StructType(Seq(
-      StructField("ID", StringType),
-      StructField("Marriage_Type", StringType),
-      StructField("Age_at_Marriage", StringType),
-      StructField("Gender", StringType),
-      StructField("Education_Level", StringType),
-      StructField("Caste_Match", StringType),
-      StructField("Religion", StringType),
-      StructField("Parental_Approval", StringType),
-      StructField("Urban_Rural", StringType),
-      StructField("Dowry_Exchanged", StringType),
-      StructField("Marital_Satisfaction", StringType),
-      StructField("Divorce_Status", StringType),
-      StructField("Children_Count", StringType),
-      StructField("Income_Level", StringType),
-      StructField("Years_Since_Marriage", StringType),
-      StructField("Spouse_Working", StringType),
-      StructField("Inter-Caste", StringType),
-      StructField("Inter-Religion", StringType)
-    ))
+    // DROP BEFORE INSERT
+    val drop = 1
+    if (drop == 1) dropExistingTables(pgUrl, pgUser, pgPwd)
 
-    // Lecture du stream Kafka
+    // INIT SCHEMA (TABLES) SQL
+    executeSqlFile("src/config/schema.sql", pgUrl, pgUser, pgPwd)
+
+    // === STREAM KAFKA
     val df = spark.readStream
       .format("kafka")
       .option("kafka.bootstrap.servers", props.getProperty("kafka.brokers"))
@@ -82,39 +54,23 @@ object KafkaToSQLiteConsumer {
 
     import spark.implicits._
 
-    val orderedDF = df
+    // On cast sans schema explicite
+    val parsedDF = df
       .selectExpr("CAST(value AS STRING) as json")
-      .select(from_json($"json", schema).as("data"))
-      .select(
-        $"data.ID",
-        $"data.Marriage_Type",
-        $"data.Age_at_Marriage",
-        $"data.Gender",
-        $"data.Education_Level",
-        $"data.Caste_Match",
-        $"data.Religion",
-        $"data.Parental_Approval",
-        $"data.Urban_Rural",
-        $"data.Dowry_Exchanged",
-        $"data.Marital_Satisfaction",
-        $"data.Divorce_Status",
-        $"data.Children_Count",
-        $"data.Income_Level",
-        $"data.Years_Since_Marriage",
-        $"data.Spouse_Working",
-        $"data.`Inter-Caste`",
-        $"data.`Inter-Religion`"
-      )
+      .select(from_json($"json", marriageSchema).as("data")) // on utilise bien le schéma importé
+      .select("data.*")
 
 
-
-    // Writer personnalisé pour insérer dans SQLite
-    val sqliteWriter = new ForeachWriter[Row] {
+    // === WRITER POSTGRES personnalisé pour insérer dans POSTGRE
+    val postgresWriter  = new ForeachWriter[Row] {
       var connection: Connection = _
       var statement: PreparedStatement = _
 
-      def open(partitionId: Long, epochId: Long): Boolean = {connection = DriverManager.getConnection(s"jdbc:sqlite:${props.getProperty("sqlite.path")}")
-        val insertSQL = "INSERT OR IGNORE INTO marriages VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+      def open(partitionId: Long, epochId: Long): Boolean = {
+        connection = DriverManager.getConnection(pgUrl, pgUser, pgPwd)
+        val insertSQL =
+          """INSERT INTO marriages VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             ON CONFLICT (ID) DO NOTHING""" // Si conflit, on ignore (pour stabilité), ici ca agit + pour doublon, si un doublon est capté, on l'ignore (donc insère pas)
         statement = connection.prepareStatement(insertSQL)
         true
       }
@@ -132,51 +88,27 @@ object KafkaToSQLiteConsumer {
       }
     }
 
-    // Stream vers SQLite
-    val query = orderedDF.writeStream
-      .foreach(sqliteWriter)
+    // == INSERT MARRIAGES (full data)
+    val InsertFullDataSet = parsedDF.writeStream
+      .foreach(postgresWriter )
       .outputMode("append")
       .start()
 
 
     // ======= STATISTICS ========
 
-    val satisfactionStats = satisfactionByMarriageType(orderedDF)
+    //val satisfactionStats = satisfactionByMarriageType(orderedDF)
 
-    /*
-    val satisfactionQuery = satisfactionStats.writeStream
-      .outputMode("complete")
+    val statQuery = parsedDF.writeStream
+      .outputMode("append")
       .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
-        writeStatToSQLite(batchDF, "satisfactionByMarriageType", props.getProperty("sqlite.path"))
+        val stats = satisfactionByMarriageType(batchDF)
+        writeStatToPostgres(stats, "satisfaction_by_marriage_type", pgUrl, pgUser, pgPwd)
       }
       .start()
 
-     */
-
-    val satisfactionQuery = satisfactionStats.writeStream
-      .outputMode("complete")
-      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
-        writeStatToSQLite(batchDF, "satisfactionByMarriageType", props.getProperty("sqlite.path"))
-      }
-      .start()
-
-    /*
-    val ageBracketStats = satisfactionByAgeBracket(orderedDF)
-
-    val ageBracketQuery = ageBracketStats.writeStream
-      .outputMode("complete")
-      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
-        writeStatToSQLite(batchDF, "satisfactionByAgeBracket", props.getProperty("sqlite.path"))
-      }
-      .start()
-    */
-
-    // ===========================
-
-    query.awaitTermination()
-
-    satisfactionQuery.awaitTermination()
-    //ageBracketQuery.awaitTermination()
+    InsertFullDataSet.awaitTermination()
+    statQuery.awaitTermination()
 
   }
 }

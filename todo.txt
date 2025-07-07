@@ -1,3 +1,13 @@
+PARLER DU SWITCH DE SQLITE A POSTGRE
+
+SQLite est nul pour gérer les processus simultanés
+Donc pour les multi-stats c chaud zebi
+
+1234
+
+5432
+
+
 ID,  
 Marriage_Type, : LOVE / ARRANGED
 Age_at_Marriage,  : tg

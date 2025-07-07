@@ -2,56 +2,27 @@ import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 
 import pandas as pd
-import sqlite3
 import matplotlib.pyplot as plt
 import base64
+import os
 
+import psycopg2
+from sqlalchemy import create_engine
 
-#count = st_autorefresh(interval=5000, limit=None, key="autorefresh")
+# ====================== AUTOREFRESH ==========================
+st_autorefresh(interval=5000, limit=None, key="autorefresh")  # every 5s
 
-
+# ====================== TITRE ================================
 st.title("LOVE IS LOVE IS HATE IS LOVE YEAH INDIAAAAAA YALAAAA")
 
-
-#st.markdown(
-#    """
-#    <script>
-#    window.onscroll = function() {
-#        sessionStorage.setItem("scrollPosition", window.scrollY);
-#    };
-#
-#    window.onload = function() {
-#        var scrollPos = sessionStorage.getItem("scrollPosition");
-#        if (scrollPos) {
-#            window.scrollTo(0, parseInt(scrollPos));
-#        }
-#    };
-#    </script>
-#    """, unsafe_allow_html=True
-#)
-
-
-
-
-st.markdown(
-    """
+# ====================== CLEAN UI =============================
+st.markdown("""
     <style>
-    /* Cache le menu Streamlit (≡) */
-    #MainMenu {visibility: hidden;}
-
-    /* Cache le footer Streamlit */
-    footer {visibility: hidden;}
-
-    /* Optionnel : cache aussi le bandeau en haut si tu veux quelque chose de clean */
-    header {visibility: hidden;}
+    #MainMenu, footer, header {visibility: hidden;}
     </style>
-    """,
-    unsafe_allow_html=True
-)
+""", unsafe_allow_html=True)
 
-
-
-# INTEGRATION DE RAJ 
+# ====================== BACKGROUND IMAGE =====================
 def get_base64_image(image_path):
     with open(image_path, "rb") as img_file:
         return base64.b64encode(img_file.read()).decode()
@@ -67,9 +38,7 @@ st.markdown(
         background-position: center center;
         background-attachment: fixed;
         background-size: cover;
-        background-top: 10;
     }}
-
     .main > div {{
         background-color: rgba(255, 255, 255, 0.9); 
         padding: 2rem;
@@ -81,97 +50,117 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ===================== GET DATA ==================================
-# FULL GPT GENERATED, yeah. 
+# ====================== CONNECT TO DB ========================
+try:
+    conn = psycopg2.connect(
+        host="localhost",
+        port=5432,
+        database="mariage_db",
+        user="postgres",
+        password="1234"
+    )
+    engine = create_engine("postgresql+psycopg2://postgres:1234@localhost:5432/mariage_db")
 
-# Connexion BDD SQLite
-conn = sqlite3.connect("../marriages.db")
-# SELECT * for all the basic dataset
-df = pd.read_sql_query("SELECT * FROM marriages", conn)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'marriages'
+        )
+    """)
+    exists = cursor.fetchone()[0]
 
-# Lire la table des stats (celle mise à jour par Spark)
-#query = "SELECT * FROM satisfactionByMarriageType"
-#df_stats = pd.read_sql_query(query, conn)
+    if not exists:
+        st.warning("Table 'marriages' not found (yet).")
+        st.stop()
 
-# Satisfaction level for arranged marriage N not divorced (yet)
-query = """
-SELECT * FROM satisfactionByMarriageType
-WHERE updated_at = (SELECT MAX(updated_at) FROM satisfactionByMarriageType)
-"""
-df_stats = pd.read_sql_query(query, conn)
+except psycopg2.DatabaseError as e:
+    st.error(f"Erreur de base de données : {e}")
+    st.stop()
 
-# Satisfaction level for age (at marriage) bracket, not divorced
-query = """
-SELECT * FROM satisfactionByAgeBracket
-WHERE updated_at = (SELECT MAX(updated_at) FROM satisfactionByAgeBracket)
-"""
-df_age = pd.read_sql_query(query, conn)
+# ========== UTILITY: Get last update timestamp ===============
+def get_last_update_timestamp(table_name: str, engine) -> int:
+    query = f"SELECT last_updated FROM meta WHERE table_name = '{table_name}'"
+    try:
+        result = pd.read_sql_query(query, engine)
+        if not result.empty:
+            return int(result.iloc[0]['last_updated'])
+    except:
+        pass
+    return 0
 
+# ========== INIT STATE FOR TIMESTAMP COMPARISON =============
+if "last_stats_update" not in st.session_state:
+    st.session_state.last_stats_update = 0
+
+# ====================== LOAD FULL DATA =======================
+df = pd.read_sql_query("SELECT * FROM marriages", engine)
+df['age_at_marriage'] = pd.to_numeric(df['age_at_marriage'], errors='coerce')
+df['children_count'] = pd.to_numeric(df['children_count'], errors='coerce')
+df['years_since_marriage'] = pd.to_numeric(df['years_since_marriage'], errors='coerce')
+
+# ====================== STATS TABLE ==========================
+df_stats = pd.DataFrame()
+current_update = get_last_update_timestamp("satisfactionByMarriageType", engine)
+
+if True:
+    try:
+        query = """
+        SELECT * FROM satisfaction_by_marriage_type
+        WHERE updated_at = (SELECT MAX(updated_at) FROM satisfaction_by_marriage_type)
+        """
+        df_stats = pd.read_sql_query(query, engine)
+        st.session_state.last_stats_update = current_update
+    except Exception as e:
+        st.warning("Data incomming...")
+
+# ====================== CLOSE DB =============================
+cursor.close()
 conn.close()
-# =====================================================================
+engine.dispose()
 
-# Transfo data supplémentaire ...
-df['Age_at_Marriage'] = pd.to_numeric(df['Age_at_Marriage'], errors='coerce')
-df['Children_Count'] = pd.to_numeric(df['Children_Count'], errors='coerce')
-df['Years_Since_Marriage'] = pd.to_numeric(df['Years_Since_Marriage'], errors='coerce')
-# // ....
-
+# ====================== VISUALS - INTRO ==============================
 st.subheader("Mariage type : Love vs. Arranged")
-type_counts = df['Marriage_Type'].value_counts()
+type_counts = df['marriage_type'].value_counts()
 fig1, ax1 = plt.subplots()
 ax1.bar(type_counts.index, type_counts.values, color=['skyblue', 'orange'])
 ax1.set_ylabel("Total")
 st.pyplot(fig1)
 
-st.subheader("Age at marriage (ish) : Love vs. Arranged")
-age_mean = df.groupby('Marriage_Type')['Age_at_Marriage'].mean().dropna()
-fig2, ax2 = plt.subplots()
-ax2.bar(age_mean.index, age_mean.values, color=['skyblue', 'orange'])
-ax2.set_ylabel("Mean Age")
-st.pyplot(fig2)
 
 st.subheader("Satisfaction")
-cross_tab = pd.crosstab(df['Marriage_Type'], df['Marital_Satisfaction'])
+cross_tab = pd.crosstab(df['marriage_type'], df['marital_satisfaction'])
 st.dataframe(cross_tab)
 
 fig3, ax3 = plt.subplots()
-cross_tab.T.plot(kind='bar', stacked=True, ax=ax3)
+if not cross_tab.empty and cross_tab.select_dtypes(include='number').shape[1] > 0:
+    cross_tab.T.plot(kind='bar', stacked=True, ax=ax3)
+else:
+    st.warning("Data incomming...")
+
 ax3.set_ylabel("Total")
 st.pyplot(fig3)
 
 
-#=======================================
-# FROM query 
+# ========== SATISFACTION PAR MARIAGE (non divorcé) ==========
+st.title("Statistiques Satisfaction par Type de Mariage (pour non divorcé bien sûr...)")
 
-st.title("Statistiques Satisfaction par Type de Mariage")
+try:
+    df_stats = pd.read_sql_query("SELECT * FROM satisfaction_by_marriage_type", engine)
 
-# Afficher le tableau des stats
-st.subheader("Données de satisfaction par type de mariage")
-st.dataframe(df_stats)
+    if not df_stats.empty:
+        st.subheader("Satisfaction par type de mariage (non divorcés)")
+        st.dataframe(df_stats)
 
-# Création du graphique (barres empilées par niveau de satisfaction)
-pivot_df = df_stats.pivot(index='Marriage_Type', columns='Marital_Satisfaction', values='count').fillna(0)
+        pivot_df = df_stats.pivot(index='Marriage_Type', columns='Marital_Satisfaction', values='count').fillna(0)
 
-fig, ax = plt.subplots(figsize=(10,6))
-pivot_df.plot(kind='bar', stacked=True, ax=ax, color=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728'])
-
-ax.set_ylabel("Nombre de personnes")
-ax.set_title("Répartition de la satisfaction par type de mariage")
-ax.legend(title="Satisfaction")
-
-st.pyplot(fig)
-
-# =========
-st.subheader("Répartition satisfaction par tranche d'âge au mariage")
-st.dataframe(df_age)
-
-pivot_age = df_age.pivot(index='age_bracket', columns='Marital_Satisfaction', values='count').fillna(0)
-pivot_age = pivot_age.apply(pd.to_numeric, errors='coerce').fillna(0)
-
-
-fig, ax = plt.subplots(figsize=(10,6))
-pivot_age.plot(kind='bar', stacked=True, ax=ax, color=['#1f77b4', '#ff7f0e', '#2ca02c'])
-ax.set_ylabel("Nombre de personnes")
-ax.set_title("Satisfaction par tranche d'âge au moment du mariage")
-ax.legend(title="Satisfaction")
-st.pyplot(fig)
+        fig, ax = plt.subplots(figsize=(10,6))
+        pivot_df.plot(kind='bar', stacked=True, ax=ax)
+        ax.set_ylabel("Nombre de personnes")
+        ax.set_title("Répartition de la satisfaction")
+        st.pyplot(fig)
+    else:
+        st.info("Stats incomming...")
+except Exception:
+    st.warning("(le graph arrive pannique pas)")

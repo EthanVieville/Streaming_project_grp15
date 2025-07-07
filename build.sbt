@@ -13,7 +13,8 @@ lazy val root = (project in file("."))
       "ch.qos.logback" % "logback-classic" % "1.2.11",
       "org.xerial" % "sqlite-jdbc" % "3.45.3.0",
       "io.spray" %% "spray-json" % "1.3.6",
-      "org.slf4j" % "slf4j-simple" % "1.7.36"
+      "org.slf4j" % "slf4j-simple" % "1.7.36",
+      "org.postgresql" % "postgresql" % "42.7.1"
     )
 
   )
