@@ -10,7 +10,7 @@ object StatisticsMaker {
 
   def writeStatToPostgres(df: DataFrame, tableName: String, url: String, user: String, password: String, overwrite: Boolean = false): Unit = {
     df.write
-      .mode(if (overwrite) "overwrite" else "append")
+      .mode(if (overwrite) "overwrite" else "append") // on overwrite pas par défault. (même si on le fait au final mdr)
       .format("jdbc")
       .option("url", url)
       .option("dbtable", tableName)
