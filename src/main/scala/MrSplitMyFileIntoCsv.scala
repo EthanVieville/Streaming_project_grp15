@@ -75,8 +75,17 @@ object MrSplitMyFileIntoCsv {
 
     // Gestion du nombre total de chunk
 
+    /*
     val maxChunkId = withChunksDF.agg(max("chunkId")).as[Int].head
     val numChunks = maxChunkId + 1
+
+     */
+
+    val chunkStats = withChunksDF.groupBy().agg(max("chunkId").alias("maxChunkId"))
+    val numChunks = chunkStats.selectExpr("maxChunkId + 1 as numChunks")
+      .first()
+      .getAs[Int]("numChunks")
+
 
 
     // Reprend depuis le dernier chunk dans le progress

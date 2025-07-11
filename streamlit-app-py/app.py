@@ -57,7 +57,7 @@ engine.dispose()
 # =============
 
 # ====================== AUTOREFRESH ==========================
-if len(df) != 10_000:
+if len(df) == 10_000:
     st_autorefresh(interval=5000, limit=None, key="autorefresh")
 
 

@@ -23,16 +23,33 @@ object load_schema {
 
     try {
       println(" [CLEANING] Drop tables before insert ....")
-      stmt.execute("DROP TABLE IF EXISTS marriages CASCADE;")
-      stmt.execute("DROP TABLE IF EXISTS satisfaction_by_marriage_type CASCADE;")
-      stmt.execute("DROP TABLE IF EXISTS meta CASCADE;")
+      val tablesToDrop = Seq(
+        "marriages",
+        "satisfaction_by_marriage_type",
+        "satisfaction_by_age_range",
+        "satisfaction_by_education_level",
+        "satisfaction_by_religion_arranged",
+        "satisfaction_by_inter_religion",
+        "satisfaction_by_income_level",
+        "satisfaction_by_parental_approval",
+        "divorces_by_religion",
+        "divorces_by_education",
+        "divorces_by_spouse_working",
+        "children_count_by_profile"
+      )
+
+      tablesToDrop.foreach { table =>
+        stmt.execute(s"DROP TABLE IF EXISTS $table CASCADE;")
+      }
       println(" [CLEANING] Cleaning done.")
     } catch {
       case e: Exception =>
-        println(s"PROBLEME ALED ALED ALED : ${e.getMessage}")
+        println(s"[ERROR] DROP TABLE FAILED : ${e.getMessage}")
     } finally {
       stmt.close()
       conn.close()
     }
   }
+
+
 }
