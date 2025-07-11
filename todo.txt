@@ -1,0 +1,183 @@
+PARLER DU SWITCH DE SQLITE A POSTGRE
+
+SQLite est nul pour gérer les processus simultanés
+Donc pour les multi-stats c chaud zebi
+
+1234
+
+5432
+
+
+ID,  
+Marriage_Type, : LOVE / ARRANGED
+Age_at_Marriage,  : tg
+Gender, : tg
+Education_Level, 
+Caste_Match,  : SAME  / DIFFERENT 
+Religion,
+Parental_Approval,
+Urban_Rural,
+Dowry_Exchanged, dote
+Marital_Satisfaction,
+Divorce_Status,
+Children_Count,
+Income_Level,
+Years_Since_Marriage,
+Spouse_Working, est ce qu'il bossent ensemble
+Inter-Caste, pas la meme origine en gros
+Inter-Religion wallah vs saint jesus joseph
+
+Problématique : ...l'amour…? mmmmm yeah
+
+COMMENT REUSSIR UN BON MARRIAGE ARRANGE ? 
+
+(on précise qu'on ne sera pas politique ici, il ne s'agit pas de jugé les pratiques des uns et des autres, aussi machiste qu'elles soient). 
+(oui)
+
+bel intro :
+
+Vous êtes nul en amour ? Vous êtes timide ? Vous êtes moche peut être ? Vous n'êtes pas Ethan ??? 
+eh bien ce n'est pas grave. 
+On peut arranger ça pour vous. 
+En s'inspirant de l'immense pays qu'est l'Inde (et les autres pays qui ont eu cette conne d'idée, mais ici c'est l'inde, coucou nabil), on peut travailler avec vous, pour faire de vous une personne comblé, trouver votre moitié, et trouver le bonheur. 
+Pourquoi l'inde ? eh bien c'est un des pays qui a le plus contribué à l'amour, oui oui, ils ont inventé le Kamasutra. Pour l'avoir lu environ 56 fois, je peux vous garantir que ca en balance de l'amour.
+
+
+Montrer satifaciton marriage arrangé / pas arrangé. 
+On voit que c'est un peu similaire niveau satisfaction, qu'est ce qu'on peut tirer de ça ? eh bien ca sert à rien de s'emmerder à chercher quelqu'un qui nous correspond vraiment quand on peut demander a papa de commander un partenaire sur amazon pour noel ? 
+
+
+
+
+Mais nous, on se soucis vraiment de vous. on vous propose plus que ça. Il ne s'agit pas d'organiser votre mariage arrangé, mais de vous aider à le rendre source de bonheur. 
+
+Alors on va utiliser les chiffres pour vous indiquer comment maximiser vos chance de bonheur avec le partenaire que vous aurez acheté à l'aveugle, euh choisis. 
+
+--- 
+
+Tout ca c'est du blabla, nous on sort les caractéristiques débiles liées au taux de mariages le plus élevé, et à la fin, on dira juste faut être ca :
+- 
+- 
+- 
+etc... 
+
+
+
+-----
+
+Est ce que l'age sa joue ? 
+
+Pour gens pas divorcé 
+=> Quelle tranche d'âge (à date du mariage) a la satifaction la plus élevé, chez les non divorcés
+
+
+Faut se marier à cette âge en gros
+
+(comparer avec non arrangé ?)
+
+---
+
+Education level, est ce que être con ca joue ? 
+=> Quelle niveau d'éduation a le plus de satisfaction chez les pas divorcés
+
+
+
+--- 
+
+Quelle religion ? Est ce qu'il faut se convertir ? amdoulilah
+Déjà on sort la répartion par religion. Ce sera pas égal. 
+Donc on met à l'échelle. 
+Et on compare ça : 
+=> Quelle religion à le meilleure taux de satisfaction, chez les non divorcés 
+
+
++ 
+
+
+Inter religion ? 
+
+
+--- 
+
+Income level
+
+Le fric c'est chic ? c'est beau le kamasutra mais au final est ce que c'est la thune qui fait tout ? car comme la dit Ghandi "La vie est un mystère qu'il faut vivre, et non un problème à résoudre"
+Voila t'en fait ce que tu veux
+
+Quelle niveau de revenus a le niveau de satisfaction le plus élevé chez les non divorcés 
+
+---
+
+
+L'approbation des parents ? 
+Eh oui ados rebelles
+
+est ce que ne pas l'avoir ca rend plus heureux ? 
+
+
+-------------------
+ET Maintenant, 
+que faut-il ne pas faire ?
+------------------
+
+Quelle religion a le plus haut taux de divorce mdrr
+
+
+---
+
+Education, on parlait de l'impact que ca peut avoir
+
+Mais est ce que ca joue dans l'autre sens également ? 
+Peut être qu'il faut être ni trop con et ni trop intelligent
+
+Donc divorce élevé par niveau éducation
+---
+
+
+Spouse working ??? 
+
+Est ce que faut travailler avec son conjoint ? 
+divorce par spouse working
+
+
+
+==========================
+
+
+uen fois tout ça, on passe aux conclus. 
+
+Voici ce qu'il faut être (oui carrément) : 
+- 
+-
+-
+-
+
+Et voici ce qu'il faut pas faire : 
+-
+-
+-
+-
+-
+
+
+On met tout les trucs à faire en commun. 
+et on regarde le nombre d'enfant que les gens ont
+
+on conclus la dessus :
+
+En étant ça, vous serez heureux et vous aurez x enfants. 
+C'est les chiffres qui le disent
+
+
+
+
+
+- marriage arrangé 
+- age 27 - 30 
+- postgraduate
+- muslim
+- middle revenu
+- parent high
+- spouse working no
+
+
