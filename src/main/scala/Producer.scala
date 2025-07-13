@@ -60,8 +60,8 @@ object Producer {
       .csv(props.getProperty("input.path"))
       .cache()
 
-    // WindowFunc, donne un "id" au chunk (en gros)
-    val w = Window.orderBy(lit(1))
+    //orderBy par l'ID. On construit les chunks toujours dans le sens des ID (1 < n ..)
+    val w = Window.orderBy("ID")
 
     val withChunksDF = rawDF
       .withColumn("line_number", row_number().over(w)) // new col line_number avec l'application de la WF

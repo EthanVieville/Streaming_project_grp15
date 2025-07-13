@@ -35,7 +35,8 @@ object load_schema {
         "divorces_by_religion",
         "divorces_by_education",
         "divorces_by_spouse_working",
-        "children_count_by_profile"
+        "children_count_by_profile",
+        "aggregated_stats"
       )
 
       tablesToDrop.foreach { table =>

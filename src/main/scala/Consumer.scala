@@ -29,11 +29,22 @@ object Consumer {
     // === FUNC pour write DF to postegre
     def writeStatStream(df: DataFrame, checkpointPath: String, tableName: String): StreamingQuery = {
       df.writeStream
+        .outputMode("complete")
+        .option("checkpointLocation", checkpointPath)
+        .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+            //println(s"[INFO] Batch $batchId :\n ${batchDF.show(false)}")
+            writeStatToPostgres(batchDF, tableName, pgUrl, pgUser, pgPwd)
+        }
+        .start()
+    }
+
+    def writeStatStream_2(df: DataFrame, checkpointPath: String, tableName: String): StreamingQuery = {
+      df.writeStream
         .outputMode("complete") // append (new lines only) / update (lines changed) / complete (re-write all)
         // Techniquement, on drop les tables, on pourrait update. Mais par sécu.
         .option("checkpointLocation", checkpointPath)
         .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
-          writeStatToPostgres(batchDF, tableName, pgUrl, pgUser, pgPwd, overwrite = true)
+          //writeStatToPostgres(batchDF, tableName, pgUrl, pgUser, pgPwd, overwrite = true)
         }
         .start()
     }
@@ -96,33 +107,48 @@ object Consumer {
     }
 
     // == INSERT MARRIAGES (full data)
-    val InsertFullDataSet = parsedDF.writeStream
-      .foreach(postgresWriter )
-      .outputMode("append") // pour le full dataset, on append  juste les lignes donc aucun soucis.
-      .start()
+    //val InsertFullDataSet = parsedDF.writeStream
+      //.foreach(postgresWriter )
+      //.outputMode("append") // pour le full dataset, on append  juste les lignes donc aucun soucis.
+      //.start()
 
 
     // ======= STATISTICS ========
 
     // Ici on checkpoint + overwrite. On fait les groupby sur les chunks du full dataset. On as donc besoin d'une "save" du groupBy, pour les cumulés (d'ou le checkpoint)
     // Et on overwrite pour cumulé d'un coup.
+    val unifiedStatsDF = satisfactionByMarriageTypeLong(parsedDF)
+      .union(satisfactionByAgeRangeLong(parsedDF))
+      .union(satisfactionByEducationLevelLong(parsedDF))
+      .union(satisfactionByReligionArrangedLong(parsedDF))
+      .union(satisfactionByInterReligionLong(parsedDF))
+      .union(satisfactionByIncomeLevelLong(parsedDF))
+      .union(satisfactionByParentalApprovalLong(parsedDF))
+      .union(divorcesByReligionLong(parsedDF))
+      .union(divorcesByEducationLong(parsedDF))
+      .union(divorcesBySpouseWorkingLong(parsedDF))
+
 
     val queries = List(
-      InsertFullDataSet,
-      writeStatStream(satisfactionByMarriageType(parsedDF),         "checkpoints/statistics/satisfactionMariage",          "satisfaction_by_marriage_type"),
-      writeStatStream(satisfactionByAgeRange(parsedDF),             "checkpoints/statistics/satisfactionAgeRange",         "satisfaction_by_age_range"),
-      writeStatStream(satisfactionByEducationLevel(parsedDF),       "checkpoints/statistics/satisfactionEducationLevel",   "satisfaction_by_education_level"),
-      writeStatStream(satisfactionByReligionArranged(parsedDF),     "checkpoints/statistics/satisfactionReligionArranged", "satisfaction_by_religion_arranged"),
-      writeStatStream(satisfactionByInterReligion(parsedDF),        "checkpoints/statistics/satisfactionInterReligion",    "satisfaction_by_inter_religion"),
-      writeStatStream(satisfactionByIncomeLevel(parsedDF),          "checkpoints/statistics/satisfactionIncomeLevel",      "satisfaction_by_income_level"),
-      writeStatStream(satisfactionByParentalApproval(parsedDF),     "checkpoints/statistics/satisfactionParentalApproval", "satisfaction_by_parental_approval"),
-      writeStatStream(divorcesByReligion(parsedDF),                 "checkpoints/statistics/divorcesByReligion",           "divorces_by_religion"),
-      writeStatStream(divorcesByEducation(parsedDF),                "checkpoints/statistics/divorcesByEducation",          "divorces_by_education"),
-      writeStatStream(divorcesBySpouseWorking(parsedDF),            "checkpoints/statistics/divorcesBySpouseWorking",      "divorces_by_spouse_working"),
+      //InsertFullDataSet,
+      writeStatStream(unifiedStatsDF,         "checkpoints/statistics/unified",          "aggregated_stats"),
+      /*
+      writeStatStream(satisfactionByAgeRangeLong(parsedDF),             "checkpoints/statistics/satisfactionAgeRange",         "aggregated_stats"),
+
+      writeStatStream(satisfactionByEducationLevelLong(parsedDF),       "checkpoints/statistics/satisfactionEducationLevel",   "aggregated_stats"),
+      writeStatStream(satisfactionByReligionArrangedLong(parsedDF),     "checkpoints/statistics/satisfactionReligionArranged", "aggregated_stats"),
+      writeStatStream(satisfactionByInterReligionLong(parsedDF),        "checkpoints/statistics/satisfactionInterReligion",    "aggregated_stats"),
+      writeStatStream(satisfactionByIncomeLevelLong(parsedDF),          "checkpoints/statistics/satisfactionIncomeLevel",      "aggregated_stats"),
+      writeStatStream(satisfactionByParentalApprovalLong(parsedDF),     "checkpoints/statistics/satisfactionParentalApproval", "aggregated_stats"),
+      writeStatStream(divorcesByReligionLong(parsedDF),                 "checkpoints/statistics/divorcesByReligion",           "aggregated_stats"),
+      writeStatStream(divorcesByEducationLong(parsedDF),                "checkpoints/statistics/divorcesByEducation",          "aggregated_stats"),
+      writeStatStream(divorcesBySpouseWorkingLong(parsedDF),            "checkpoints/statistics/divorcesBySpouseWorking",      "aggregated_stats"),
       writeStatStream(childrenCountByIdealProfile(parsedDF),        "checkpoints/statistics/childrenByProfile",            "children_count_by_profile")
+      */
     )
 
     queries.foreach(_.awaitTermination())
+
 
 
 

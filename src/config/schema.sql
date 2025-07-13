@@ -95,4 +95,15 @@ CREATE TABLE IF NOT EXISTS children_count_by_profile (
 );
 
 
+-- Table unifiée pour toutes les stats
+CREATE TABLE IF NOT EXISTS aggregated_stats (
+  stat_category TEXT NOT NULL,      -- nom de la stat, ex: satisfaction_marriage
+  marriages_col TEXT NOT NULL,      -- ex: 'Marriage_Type', 'Age_Range'...
+  marriages_value TEXT NOT NULL,    -- ex: 'Love', '18-22'...
+  grp_by_name TEXT NOT NULL,        -- ex: 'Marital_Satisfaction', 'Count', 'Divorce_Count'
+  metric_value TEXT NOT NULL,     -- ex: "high", "medium" ...
+  count BIGINT NOT NULL
+);
+
+
 
