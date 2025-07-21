@@ -26,27 +26,24 @@ object load_schema {
     val stmt = conn.createStatement()
 
     try {
-      println(" [CLEANING] Drop tables before insert ....")
-      val tablesToDrop = Seq(
-        "marriages",
-        "satisfaction_by_marriage_type",
-        "satisfaction_by_age_range",
-        "satisfaction_by_education_level",
-        "satisfaction_by_religion_arranged",
-        "satisfaction_by_inter_religion",
-        "satisfaction_by_income_level",
-        "satisfaction_by_parental_approval",
-        "divorces_by_religion",
-        "divorces_by_education",
-        "divorces_by_spouse_working",
-        "children_count_by_profile",
-        "aggregated_stats"
-      )
+      println(" [CLEANING] Drop ALL user tables...")
 
-      tablesToDrop.foreach { table =>
-        stmt.execute(s"DROP TABLE IF EXISTS $table CASCADE;")
+      // Tape le schéma public pas sytème
+      val rs = stmt.executeQuery(
+        """
+           SELECT tablename FROM pg_tables WHERE schemaname = 'public';
+        """.stripMargin)
+
+      val tables = Iterator.continually((rs.next(), rs))
+        .takeWhile(_._1)
+        .map(_._2.getString("tablename"))
+        .toList
+
+      tables.foreach { table =>
+        stmt.execute(s"""DROP TABLE IF EXISTS "$table" CASCADE;""")
       }
-      println(" [CLEANING] Cleaning done.")
+
+      println(" [CLEANING] All tables dropped.")
     } catch {
       case e: Exception =>
         println(s"[ERROR] DROP TABLE FAILED : ${e.getMessage}")

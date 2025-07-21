@@ -1,14 +1,12 @@
-import org.apache.spark.sql.SparkSession
+import StatisticsMaker._
+import load_schema._
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{DataFrame, ForeachWriter, Row}
+import org.apache.spark.sql.{DataFrame, Dataset, ForeachWriter, Row, SparkSession}
+import schemas.schemas._
 
 import java.io.FileInputStream
 import java.sql.{Connection, DriverManager, PreparedStatement}
 import java.util.Properties
-import StatisticsMaker._
-import load_schema._
-import schemas.schemas._
-import org.apache.spark.sql.streaming.StreamingQuery
 
 object Consumer {
 
@@ -35,17 +33,28 @@ object Consumer {
     import spark.implicits._
 
 
-    // === FUNC pour write DF to postegre
-    def writeStatStream(df: DataFrame, checkpointPath: String, tableName: String): StreamingQuery = {
-      df.writeStream
-        .outputMode("complete") // append (new lines only) / update (lines changed) / complete (re-write all)
-        // Techniquement, on drop les tables, on pourrait update. Mais par sécu.
-        .option("checkpointLocation", checkpointPath)
-        .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
-          writeStatToPostgres(batchDF, tableName, pgUrl, pgUser, pgPwd, overwrite = true)
-        }
-        .start()
-    }
+    //// === FUNC pour write DF to postegre
+    //def writeStatStream(df: DataFrame, checkpointPath: String, tableName: String): StreamingQuery = {
+    //  df.writeStream
+    //    .outputMode("complete") // append (new lines only) / update (lines changed) / complete (re-write all)
+    //    // Techniquement, on drop les tables, on pourrait update. Mais par sécu.
+    //    .option("checkpointLocation", checkpointPath)
+    //    .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+    //      val cleanedDF = batchDF.cache()
+    //      writeStatToPostgres(batchDF, tableName, pgUrl, pgUser, pgPwd, overwrite = true)
+    //      writeStatToPostgres(satisfactionByMarriageType(cleanedDF), "satisfaction_by_marriage_type", pgUrl, pgUser, pgPwd)
+    //      writeStatToPostgres(satisfactionByAgeRange(cleanedDF), "satisfaction_by_age_range", pgUrl, pgUser, pgPwd)
+    //      writeStatToPostgres(satisfactionByEducationLevel(cleanedDF), "satisfaction_by_education_level", pgUrl, pgUser, pgPwd)
+    //      writeStatToPostgres(satisfactionByReligion(cleanedDF), "satisfaction_by_religion_arranged", pgUrl, pgUser, pgPwd)
+    //      writeStatToPostgres(satisfactionByIncomeLevel(cleanedDF), "satisfaction_by_income_level", pgUrl, pgUser, pgPwd)
+    //      writeStatToPostgres(divorcesByReligion(cleanedDF), "divorces_by_religion", pgUrl, pgUser, pgPwd)
+    //      writeStatToPostgres(divorcesByEducation(cleanedDF), "divorces_by_education", pgUrl, pgUser, pgPwd)
+    //      writeStatToPostgres(divorcesBySpouseWorking(cleanedDF), "divorces_by_spouse_working", pgUrl, pgUser, pgPwd)
+    //
+    //      cleanedDF.unpersist() // Nettoie la mémoire
+    //    }
+    //    .start()
+    //}
 
 
     // DROP BEFORE INSERT
@@ -82,6 +91,7 @@ object Consumer {
       }
 
       def process(row: Row): Unit = {
+        // -1 correction entre JDBC et SPARK car index différent et insère null en base si la valeur de col est nul
         for (i <- 1 to row.length) {
           statement.setString(i, if (row.isNullAt(i - 1)) null else row.getString(i - 1))
         }
@@ -95,10 +105,33 @@ object Consumer {
     }
 
     // == INSERT MARRIAGES (full data)
-    val InsertFullDataSet = parsedDF.writeStream
+    val insertFullDataset = parsedDF.writeStream
       .foreach(postgresWriter)
-      .outputMode("append") // pour le full dataset, on append  juste les lignes donc aucun soucis.
+      .outputMode("append")
+      .option("checkpointLocation", "checkpoints/full/marriages")
       .start()
+
+    // === UN SEUL STREAM pour toutes les stats
+    val statsStream = parsedDF.writeStream
+      .outputMode("append")
+      .option("checkpointLocation", "checkpoints/statistics/global")
+      .foreachBatch { (batchDF: Dataset[Row], batchId: Long) =>
+        val cleanedDF = batchDF.cache()
+
+        writeStatToPostgres(satisfactionByMarriageType(cleanedDF), "satisfaction_by_marriage_type", pgUrl, pgUser, pgPwd)
+        writeStatToPostgres(satisfactionByAgeRange(cleanedDF), "satisfaction_by_age_range", pgUrl, pgUser, pgPwd)
+        writeStatToPostgres(satisfactionByEducationLevel(cleanedDF), "satisfaction_by_education_level", pgUrl, pgUser, pgPwd)
+        writeStatToPostgres(satisfactionByReligion(cleanedDF), "satisfaction_by_religion_arranged", pgUrl, pgUser, pgPwd)
+        writeStatToPostgres(satisfactionByIncomeLevel(cleanedDF), "satisfaction_by_income_level", pgUrl, pgUser, pgPwd)
+        writeStatToPostgres(divorcesByReligion(cleanedDF), "divorces_by_religion", pgUrl, pgUser, pgPwd)
+        writeStatToPostgres(divorcesByEducation(cleanedDF), "divorces_by_education", pgUrl, pgUser, pgPwd)
+        writeStatToPostgres(divorcesBySpouseWorking(cleanedDF), "divorces_by_spouse_working", pgUrl, pgUser, pgPwd)
+
+        cleanedDF.unpersist()
+        ()
+      }
+      .start()
+
 
 
     // ======= STATISTICS ========
@@ -107,16 +140,10 @@ object Consumer {
     // Et on overwrite pour cumulé d'un coup.
 
     val queries = List(
-      InsertFullDataSet,
-      writeStatStream(satisfactionByMarriageType(parsedDF), "checkpoints/statistics/satisfactionMariage", "satisfaction_by_marriage_type"),
-      writeStatStream(satisfactionByAgeRange(parsedDF), "checkpoints/statistics/satisfactionAgeRange", "satisfaction_by_age_range"),
-      writeStatStream(satisfactionByEducationLevel(parsedDF), "checkpoints/statistics/satisfactionEducationLevel", "satisfaction_by_education_level"),
-      writeStatStream(satisfactionByReligion(parsedDF), "checkpoints/statistics/satisfactionReligionArranged", "satisfaction_by_religion_arranged"),
-      writeStatStream(satisfactionByIncomeLevel(parsedDF), "checkpoints/statistics/satisfactionIncomeLevel", "satisfaction_by_income_level"),
-      writeStatStream(divorcesByReligion(parsedDF), "checkpoints/statistics/divorcesByReligion", "divorces_by_religion"),
-      writeStatStream(divorcesByEducation(parsedDF), "checkpoints/statistics/divorcesByEducation", "divorces_by_education"),
-      writeStatStream(divorcesBySpouseWorking(parsedDF), "checkpoints/statistics/divorcesBySpouse", "divorces_by_spouse_working"),
+      insertFullDataset,
+      statsStream
     )
+
 
     queries.foreach(_.awaitTermination())
   }

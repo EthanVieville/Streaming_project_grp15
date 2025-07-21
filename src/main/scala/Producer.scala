@@ -65,20 +65,21 @@ object Producer {
       .cache()
 
     // WindowFunc, donne un "id" au chunk (en gros)
-    val w = Window.orderBy(lit(1))
+    val w = Window.orderBy(col("ID").cast("int")) // Conversion int car col origin en string
 
     val withChunksDF = rawDF
-      .withColumn("line_number", row_number().over(w)) // new col line_number avec l'application de la WF
-      .withColumn("chunkId", floor(($"line_number" - 1) / props.getProperty("chunk.size").toInt).cast("int")) // new col chunkId, on commence à 0. On veut chunk.size chunks. Cast en INT.
+      .withColumn("line_number", row_number().over(w)) // Num de ligne au cas ou ligne avec id manquant
+      .withColumn("chunkId", floor(($"line_number" - 1) / props.getProperty("chunk.size").toInt).cast("int")) // ChunID
       .cache()
 
 
 
     // == Gestion du nombre total de chunk ==
 
-    // Grp by chunk id. On get la max
-    val chunkStats = withChunksDF.groupBy().agg(max("chunkId").alias("maxChunkId"))
-    val numChunks = chunkStats.selectExpr("maxChunkId + 1 as numChunks") // on + 1 (car commence à 0)
+    // Calcule le nombre total de chunks +1 car commence a 0
+    val numChunks = withChunksDF
+      .agg(max("chunkId").alias("maxChunkId"))
+      .selectExpr("maxChunkId + 1 as numChunks")
       .first()
       .getAs[Int]("numChunks")
 

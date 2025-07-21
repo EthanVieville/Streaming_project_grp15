@@ -239,12 +239,12 @@ with col1:
     st.subheader("Répartition des types")
     
     type_counts = df['marriage_type'].value_counts().reset_index()
-    type_counts.columns = ['Marriage_Type', 'Total']
+    type_counts.columns = ['marriage_type', 'Total']
     
     fig = px.pie(
         type_counts,
         values='Total',
-        names='Marriage_Type',
+        names='marriage_type',
         color_discrete_sequence=[COLORS['arranged'], COLORS['love']],
         hole=0.4
     )
@@ -302,13 +302,13 @@ try:
 
         fig = px.bar(
             df_stats,
-            x="Marital_Satisfaction",
-            y="Count",
-            color="Marriage_Type",
+            x="marital_satisfaction",
+            y="count",
+            color="marriage_type",
             barmode="group",
-            text="Count",
+            text="count",
             title="Satisfaction selon le type de mariage (hors divorces)",
-            color_discrete_sequence=['#69b3a2', '#ff9933']  
+            color_discrete_sequence=['#69b3a2', '#ff9933']
         )
 
         fig.update_layout(
@@ -340,19 +340,19 @@ try:
 
         fig = px.bar(
             df_age,
-            x="Age_Range",
-            y="Count",
-            color="Marital_Satisfaction",
-            facet_col="Marriage_Type",
+            x="age_range",
+            y="count",
+            color="marital_satisfaction",
+            facet_col="marriage_type",
             barmode="stack",
-            text="Count",
-            category_orders={"Age_Range": sorted(df_age["Age_Range"].unique())},
+            text="count",
+            category_orders={"age_range": sorted(df_age["age_range"].unique())},
             color_discrete_sequence=px.colors.qualitative.Set2,
             labels={
-                "Age_Range": "Tranche d'âge au mariage",
-                "Count": "Nombre de personnes",
-                "Marital_Satisfaction": "Satisfaction",
-                "Marriage_Type": "Type de mariage"
+                "age_range": "Tranche d'âge au mariage",
+                "count": "Nombre de personnes",
+                "marital_satisfaction": "Satisfaction",
+                "marriage_type": "Type de mariage"
             },
             title="Satisfaction par âge au mariage et type de mariage"
         )
@@ -387,10 +387,10 @@ try:
 
         fig = px.bar(
             df_edu,
-            y="Education_Level",
-            x="Count",
-            color="Marital_Satisfaction",
-            facet_col="Marriage_Type",
+            y="education_level",
+            x="count",
+            color="marital_satisfaction",
+            facet_col="marriage_type",
             barmode="group",
             orientation="h",
             color_discrete_map={
@@ -399,10 +399,10 @@ try:
                 "Dissatisfied": "#d62728"
             },
             labels={
-                "Education_Level": "Niveau d'éducation",
-                "Count": "Nombre de personnes",
-                "Marital_Satisfaction": "Satisfaction",
-                "Marriage_Type": "Type de mariage"
+                "education_level": "Niveau d'éducation",
+                "count": "Nombre de personnes",
+                "marital_satisfaction": "Satisfaction",
+                "marriage_type": "Type de mariage"
             },
             title="Satisfaction selon le niveau d'éducation et le type de mariage"
         )
@@ -426,7 +426,7 @@ except Exception as e:
 
 # ========== SATISFACTION PAR RELGION (religion - non divorcé - marriage arrangé) ==========
 
-st.title("Satisfaction par Religion : Mariages Arrangés vs Mariages d'Amour")
+st.title("Satisfaction par religion : Mariages Arrangés vs Mariages d'Amour")
 
 try:
     df_religion = load_data_from_db("SELECT * FROM satisfaction_by_religion_arranged")
@@ -434,23 +434,23 @@ try:
     if not df_religion.empty:
         st.dataframe(df_religion)
 
-        # Graphique clair : Religion en X, Marriage_Type en couleur, motifs pour satisfaction
+        # Graphique clair : religion en X, marriage_type en couleur, motifs pour satisfaction
         fig = px.bar(
             df_religion,
-            x="Religion",
-            y="Count",
-            color="Marriage_Type",  # Arranged vs Love
-            pattern_shape="Marital_Satisfaction",  # Motifs pour satisfaction
+            x="religion",
+            y="count",
+            color="marriage_type",  # Arranged vs Love
+            pattern_shape="marital_satisfaction",  # Motifs pour satisfaction
             barmode="group",
             labels={
-                "Count": "Nombre de personnes", 
-                "Religion": "Religion", 
-                "Marriage_Type": "Type de mariage",
-                "Marital_Satisfaction": "Satisfaction"
+                "count": "Nombre de personnes",
+                "religion": "religion",
+                "marriage_type": "Type de mariage",
+                "marital_satisfaction": "Satisfaction"
             },
-            title="Satisfaction par Religion : Comparaison Arranged vs Love",
+            title="Satisfaction par religion : Comparaison Arranged vs Love",
             color_discrete_map={
-                "Arranged": "#FF6B6B",  # Rouge 
+                "Arranged": "#FF6B6B",  # Rouge
                 "Love": "#4ECDC4"       # Bleu
             }
         )
@@ -461,13 +461,13 @@ try:
             margin=dict(b=150, t=100),
             legend=dict(
                 orientation="h",
-                yanchor="bottom", 
+                yanchor="bottom",
                 y=1.02,
                 xanchor="center",
                 x=0.5
             )
         )
-        
+
         # Ajouter les valeurs sur les barres
         fig.update_traces(
             textposition='outside',
@@ -476,10 +476,10 @@ try:
         )
 
         st.plotly_chart(fig, use_container_width=True)
-        
+
     else:
         st.info("Table satisfaction_by_religion_arranged vide.")
-        
+
 except Exception as e:
     st.warning(f"Erreur : {e}")
     #st.exception(e)
@@ -498,16 +498,16 @@ try:
         # Graphique principal : barres groupées par type de mariage
         fig = px.bar(
             df_income,
-            x="Income_Level",
-            y="Count",
-            color="Marriage_Type",
-            pattern_shape="Marital_Satisfaction",
+            x="income_level",
+            y="count",
+            color="marriage_type",
+            pattern_shape="marital_satisfaction",
             barmode="group",
             labels={
-                "Count": "Nombre de personnes", 
-                "Income_Level": "Niveau de revenu", 
-                "Marriage_Type": "Type de mariage",
-                "Marital_Satisfaction": "Satisfaction"
+                "count": "Nombre de personnes",
+                "income_level": "Niveau de revenu",
+                "marriage_type": "Type de mariage",
+                "marital_satisfaction": "Satisfaction"
             },
             title="Satisfaction par niveau de revenu",
             color_discrete_map={
@@ -521,21 +521,21 @@ try:
             xaxis_tickangle=45,
             margin=dict(b=100)
         )
-        
+
         fig.update_traces(textposition='outside', texttemplate='%{y}', textfont_size=9)
 
         st.plotly_chart(fig, use_container_width=True)
-        
+
         # Légende simple
         col1, col2 = st.columns(2)
         with col1:
             st.info("🔴 **Rouge** = Mariages arrangés")
         with col2:
             st.info("🔵 **Bleu** = Mariages d'amour")
-            
+
     else:
         st.info("Table satisfaction_by_income_level vide.")
-        
+
 except Exception as e:
     st.warning(f"Erreur : {e}")
     #st.exception(e)
@@ -547,9 +547,9 @@ st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
 st.markdown('<div id="divorces"></div>', unsafe_allow_html=True)
 st.markdown("## Quelques tips pour pas divorcer quand même ..")
 
-# ========== DIVORCE PAR RELIGION (religin - divorcé - marriage arrangé) ==========
+# ========== DIVORCE PAR religion (religin - divorcé - marriage arrangé) ==========
 
-st.title("Taux de Divorce par Religion (Mariage Type)")
+st.title("Taux de Divorce par religion (Mariage Type)")
 
 try:
     df_div = load_data_from_db("SELECT * FROM divorces_by_religion")
@@ -560,20 +560,20 @@ try:
         # Barres groupées : une par type de mariage, groupées par religion
         fig = px.bar(
             df_div,
-            x="Count",
-            y="Religion",
-            color="Marriage_Type",
+            x="count",
+            y="religion",
+            color="marriage_type",
             orientation="h",
-            text="Count",
+            text="count",
             barmode="group",
             color_discrete_map={
                 "Arranged": "#FF7F0E",
                 "Love": "#1F77B4"
             },
             labels={
-                "Count": "Nombre de divorces",
-                "Religion": "Religion",
-                "Marriage_Type": "Type de mariage"
+                "count": "Nombre de divorces",
+                "religion": "religion",
+                "marriage_type": "Type de mariage"
             },
             title="Nombre de divorces par religion et type de mariage"
         )
@@ -604,19 +604,19 @@ try:
         # Barres groupées : niveau d'éducation vs type de mariage
         fig = px.bar(
             df_div_edu,
-            x="Education_Level",
-            y="Count",
-            color="Marriage_Type",
+            x="education_level",
+            y="count",
+            color="marriage_type",
             barmode="group",
-            text="Count",
+            text="count",
             color_discrete_map={
                 "Arranged": "#FF7F0E",
                 "Love": "#1F77B4"
             },
             labels={
-                "Count": "Nombre de divorces",
-                "Education_Level": "Niveau d'éducation",
-                "Marriage_Type": "Type de mariage"
+                "count": "Nombre de divorces",
+                "education_level": "Niveau d'éducation",
+                "marriage_type": "Type de mariage"
             },
             title="Divorces par niveau d'éducation et type de mariage"
         )
@@ -647,20 +647,20 @@ try:
 
         fig = px.bar(
             df_spouse,
-            x="Count",
-            y="Spouse_Working",
-            color="Marriage_Type",
+            x="count",
+            y="spouse_working",
+            color="marriage_type",
             orientation="h",
-            text="Count",
+            text="count",
             barmode="group",
             color_discrete_map={
                 "Arranged": "#EF553B",
                 "Love": "#636EFA"
             },
             labels={
-                "Count": "Nombre de divorces",
-                "Spouse_Working": "Conjoint travaille ?",
-                "Marriage_Type": "Type de mariage"
+                "count": "Nombre de divorces",
+                "spouse_working": "Conjoint travaille ?",
+                "marriage_type": "Type de mariage"
             },
             title="Divorces selon le spouse working situation"
         )
