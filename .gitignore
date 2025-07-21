@@ -1,17 +1,52 @@
-# IntelliJ IDEA
-.idea/
-*.iml
+# ============ SCALA / SBT / SPARK ============
 
-# Build & Scala
-target/
-out/
-*.class
+# Build and target
+/target/
+/project/target/
+/project/project/
+
+# BSP / Metals / IntelliJ / IDEA
+.bsp/
+.idea/
+.metals/
+*.iml
+*.ipr
+*.iws
+
+# Logs
 *.log
 
-# OS
-.DS_Store
-Thumbs.db
+# Checkpointing Spark
+checkpoints/
 
-# Custom folders
-INPUT/
-OUTPUT/
+# ============ KAFKA ============
+
+# Kafka local installation
+/kafka_*/
+
+# Kafka logs
+/kafka-logs/
+/logs/
+
+# ============ POSTGRESQL ============
+
+# Postgres local data
+/pgsql/
+
+# ============ Python / Streamlit ============
+
+__pycache__/
+/*.pyc
+.DS_Store
+
+# Streamlit cache
+/.streamlit/
+
+# ============ Misc ============
+
+# OS
+Thumbs.db
+.DS_Store
+
+# VSCode (si utilisé)
+.vscode/
