@@ -101,18 +101,6 @@ st.markdown(
 
 
 
-# ========== UTILITY: Get last update timestamp ===============
-def get_last_update_timestamp(table_name: str, engine) -> int:
-    query = f"SELECT last_updated FROM meta WHERE table_name = '{table_name}'"
-    try:
-        result = pd.read_sql_query(query, engine)
-        if not result.empty:
-            return int(result.iloc[0]['last_updated'])
-    except:
-        pass
-    return 0
-
-
 # ====================== VISUALS - INTRO ==============================
 st.info(f"{len(df)} / 10 000 loaded.")
 
@@ -125,19 +113,6 @@ ax1.bar(type_counts.index, type_counts.values, color=['skyblue', 'orange'])
 ax1.set_ylabel("Total")
 st.pyplot(fig1)
 
-
-st.subheader("Satisfaction")
-cross_tab = pd.crosstab(df['marriage_type'], df['marital_satisfaction'])
-st.dataframe(cross_tab)
-
-fig3, ax3 = plt.subplots()
-if not cross_tab.empty and cross_tab.select_dtypes(include='number').shape[1] > 0:
-    cross_tab.T.plot(kind='bar', stacked=True, ax=ax3)
-else:
-    st.warning("Table note created (yet).")
-
-ax3.set_ylabel("Total")
-st.pyplot(fig3)
 
 
 # ========== SATISFACTION PAR MARIAGE (non divorcé) ==========
