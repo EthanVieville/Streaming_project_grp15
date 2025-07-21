@@ -1,9 +1,5 @@
-import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
-
-import java.sql.{Connection, DriverManager, PreparedStatement}
-
 
 object StatisticsMaker {
 
@@ -33,7 +29,7 @@ object StatisticsMaker {
     df.filter(
         col("Divorce_Status") =!= "Yes" &&
           col("Age_at_Marriage").isNotNull &&
-          col("Marriage_Type") === "Arranged"
+          col("Marriage_Type").isin("Arranged", "Love")
       )
       .withColumn("Age_Int", col("Age_at_Marriage").cast("int"))
       .withColumn("Age_Range", when(col("Age_Int").between(0, 17), "0-17")
@@ -44,105 +40,76 @@ object StatisticsMaker {
         .when(col("Age_Int") > 35, "36+")
         .otherwise("Unknown")
       )
-      .groupBy("Age_Range", "Marital_Satisfaction")
+      .groupBy("Age_Range", "Marriage_Type", "Marital_Satisfaction")
       .agg(count("*").alias("Count"))
   }
+
 
   def satisfactionByEducationLevel(df: DataFrame): DataFrame = {
     df.filter(
         col("Divorce_Status") =!= "Yes" &&
           col("Education_Level").isNotNull &&
-          col("Marriage_Type") === "Arranged"
+          col("Marriage_Type").isin("Arranged", "Love")
       )
-      .groupBy("Education_Level", "Marital_Satisfaction")
+      .groupBy("Education_Level", "Marriage_Type", "Marital_Satisfaction")
       .agg(count("*").alias("Count"))
   }
 
-  def satisfactionByReligionArranged(df: DataFrame): DataFrame = {
-    df.filter(
-        col("Divorce_Status") =!= "Yes" &&
-          col("Marriage_Type") === "Arranged" &&
-          col("Religion").isNotNull
-      )
-      .groupBy("Religion", "Marital_Satisfaction")
-      .agg(count("*").alias("Count"))
-  }
 
-  def satisfactionByInterReligion(df: DataFrame): DataFrame = {
+  def satisfactionByReligion(df: DataFrame): DataFrame = {
     df.filter(
         col("Divorce_Status") =!= "Yes" &&
-          col("Marriage_Type") === "Arranged" &&
-          col("Inter-Religion") === "Yes" &&
-          col("Religion").isNotNull
+          col("Religion").isNotNull &&
+          col("Marriage_Type").isin("Arranged", "Love")
       )
-      .groupBy("Religion", "Marital_Satisfaction")
+      .groupBy("Religion", "Marriage_Type", "Marital_Satisfaction")
       .agg(count("*").alias("Count"))
   }
 
   def satisfactionByIncomeLevel(df: DataFrame): DataFrame = {
     df.filter(
         col("Divorce_Status") =!= "Yes" &&
-          col("Marriage_Type") === "Arranged" &&
-          col("Income_Level").isNotNull
+          col("Income_Level").isNotNull &&
+          col("Marriage_Type").isin("Arranged", "Love")
       )
-      .groupBy("Income_Level", "Marital_Satisfaction")
+      .groupBy("Income_Level", "Marriage_Type", "Marital_Satisfaction")
       .agg(count("*").alias("Count"))
   }
 
-  def satisfactionByParentalApproval(df: DataFrame): DataFrame = {
-    df.filter(
-        col("Divorce_Status") =!= "Yes" &&
-          col("Marriage_Type") === "Arranged" &&
-          col("Parental_Approval").isNotNull
-      )
-      .groupBy("Parental_Approval", "Marital_Satisfaction")
-      .agg(count("*").alias("Count"))
-  }
+
 
   def divorcesByReligion(df: DataFrame): DataFrame = {
     df.filter(
         col("Divorce_Status") === "Yes" &&
-          col("Marriage_Type") === "Arranged" &&
-          col("Religion").isNotNull
+          col("Religion").isNotNull &&
+          col("Marriage_Type").isin("Arranged", "Love")
       )
-      .groupBy("Religion")
+      .groupBy("Religion", "Marriage_Type")
       .agg(count("*").alias("Count"))
   }
+
 
   def divorcesByEducation(df: DataFrame): DataFrame = {
     df.filter(
         col("Divorce_Status") === "Yes" &&
-          col("Marriage_Type") === "Arranged" &&
-          col("Education_Level").isNotNull
+          col("Education_Level").isNotNull &&
+          col("Marriage_Type").isin("Arranged", "Love")
       )
-      .groupBy("Education_Level")
+      .groupBy("Education_Level", "Marriage_Type")
       .agg(count("*").alias("Count"))
   }
+
 
   def divorcesBySpouseWorking(df: DataFrame): DataFrame = {
     df.filter(
         col("Divorce_Status") === "Yes" &&
-          col("Marriage_Type") === "Arranged" &&
-          col("Spouse_Working").isNotNull
+          col("Spouse_Working").isNotNull &&
+          col("Marriage_Type").isin("Arranged", "Love")
       )
-      .groupBy("Spouse_Working")
+      .groupBy("Spouse_Working", "Marriage_Type")
       .agg(count("*").alias("Count"))
   }
 
-  def childrenCountByIdealProfile(df: DataFrame): DataFrame = {
-    df.filter(
-        col("Marriage_Type") === "Arranged" &&
-          col("Marital_Satisfaction") === "High" &&
-          col("Age_at_Marriage").cast("int").between(27, 30) &&
-          col("Education_Level") === "Postgraduate" &&
-          col("Religion") === "Muslim" &&
-          col("Income_Level") === "Middle" &&
-          col("Parental_Approval") === "Partial" &&
-          col("Spouse_Working") === "No"
-      )
-      .groupBy("Children_Count")
-      .agg(count("*").alias("Count"))
-  }
 
 
 

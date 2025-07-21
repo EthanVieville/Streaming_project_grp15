@@ -1,13 +1,17 @@
-import java.sql.{Connection, DriverManager}
+import java.sql.DriverManager
 import scala.io.Source
+import scala.util.Using
+
 
 object load_schema {
   def executeSqlFile(path: String, pgUrl: String, pgUser: String, pgPwd: String): Unit = {
     val conn = DriverManager.getConnection(pgUrl, pgUser, pgPwd)
-    val stmt = conn.createStatement()
+    val stmt = conn.createStatement() // statement, pour exec une rqt SQL
 
     try {
-      val sql = Source.fromFile(path).mkString
+      val sql = Using.resource(Source.fromFile(path)) { source =>
+        source.mkString // lis tout le schema.sql comme une seule str
+      }
       stmt.execute(sql)
     } finally {
       stmt.close()
@@ -35,7 +39,8 @@ object load_schema {
         "divorces_by_religion",
         "divorces_by_education",
         "divorces_by_spouse_working",
-        "children_count_by_profile"
+        "children_count_by_profile",
+        "aggregated_stats"
       )
 
       tablesToDrop.foreach { table =>

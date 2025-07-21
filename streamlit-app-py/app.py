@@ -1,74 +1,103 @@
+# GESTION IMPORTS
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
-
 import pandas as pd
-import matplotlib.pyplot as plt
 import base64
-import os
+import plotly.express as px
+from sqlalchemy import create_engine, text
 
-import psycopg2
-from sqlalchemy import create_engine
-
-
-# ====================== CONNECT TO DB ========================
-try:
-    conn = psycopg2.connect(
-        host="localhost",
-        port=5432,
-        database="mariage_db",
-        user="postgres",
-        password="1234"
-    )
-    engine = create_engine("postgresql+psycopg2://postgres:1234@localhost:5432/mariage_db")
-
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT EXISTS (
-            SELECT FROM information_schema.tables 
-            WHERE table_schema = 'public' 
-            AND table_name = 'marriages'
-        )
-    """)
-    exists = cursor.fetchone()[0]
-
-    if not exists:
-        st.warning("Table 'marriages' not found (yet).")
-        st.stop()
-
-except psycopg2.DatabaseError as e:
-    st.error(f"Erreur de base de données : {e}")
-    st.stop()
-
-# ====================== LOAD FULL DATA =======================
-df = pd.read_sql_query("SELECT * FROM marriages", engine)
-df['age_at_marriage'] = pd.to_numeric(df['age_at_marriage'], errors='coerce')
-df['children_count'] = pd.to_numeric(df['children_count'], errors='coerce')
-df['years_since_marriage'] = pd.to_numeric(df['years_since_marriage'], errors='coerce')
+import logging
 
 
-# ====================== CLOSE DB =============================
-cursor.close()
-conn.close()
-engine.dispose()
+# INIT LOGGER
+logging.basicConfig(level=logging.INFO)
 
 
-# ==============
-# *** FRONT ***
-# =============
+COLORS = {
+    'arranged': '#FF6B6B',
+    'love': '#4ECDC4', 
+    'primary': '#667eea',
+    'secondary': '#764ba2'
+}
 
-# ====================== AUTOREFRESH ==========================
-if len(df) == 100_000:
-    st_autorefresh(interval=5000, limit=None, key="autorefresh")
+    
+# ====================== CONFIGURATION PAGE =================
+st.set_page_config(
+    page_title="Love vs. Arranged (arranged first)",
+    page_icon="💕",
+    layout="wide"
+)
 
-
-# ====================== TITRE ================================
-st.title("LOVE IS LOVE IS HATE IS LOVE YEAH INDIAAAAAA YALAAAA")
-
-# ====================== CLEAN UI =============================
+# ====================== STYLES PERSONNALISÉS ================
 st.markdown("""
     <style>
+    /* Masquer le menu Streamlit */
     #MainMenu, footer, header {visibility: hidden;}
+    
+    /* Style principal */
+    .main-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        text-align: center;
+        color: white;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    
+
+    
+    .section-divider {
+        border: none;
+        height: 3px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        margin: 3rem 0;
+        border-radius: 2px;
+    }
+    
+    /* Navigation tabs style */
+    .nav-tabs {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin: 2rem 0;
+    }
+    
+    .nav-tab {
+        padding: 0.8rem 1.5rem;
+        background: white;
+        border: 2px solid #667eea;
+        border-radius: 25px;
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .nav-tab.active {
+        background: #667eea;
+        color: white;
+    }
+    
+    .nav-tab:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+    
+    /* Background */
+    .stApp {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
     </style>
+""", unsafe_allow_html=True)
+
+# ====================== HEADER PRINCIPAL ====================
+st.markdown("""
+    <div class="main-header">
+        <h1>Le Mariage Arrangé c'est top !</h1>
+        <p style="font-size: 1.2rem; margin-top: 1rem;">Analyse Bonheur Marital entre mariage arrangé et par amour. Erreurs à éviter !</p>
+    </div>
 """, unsafe_allow_html=True)
 
 # ====================== BACKGROUND IMAGE =====================
@@ -88,55 +117,211 @@ st.markdown(
         background-attachment: fixed;
         background-size: cover;
     }}
-    .main > div {{
-        background-color: rgba(255, 255, 255, 0.9); 
-        padding: 2rem;
-        border-radius: 16px;
-        margin: 2rem;
-    }}
-    </style>
+
     """,
     unsafe_allow_html=True
 )
 
 
 
+# ====================== CONNECT TO DB ========================
+@st.cache_resource
+def init_db_connection():
+    try:
+        engine = create_engine("postgresql+psycopg2://postgres:1234@localhost:5432/mariage_db")
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'marriages'
+                )
+            """))
+            if not result.fetchone()[0]:
+                st.warning("Table 'marriages' non trouvée.")
+                st.stop()
+        return engine
+    except Exception as e:
+        st.error("Impossible de se connecter à la base de données.")
+        st.stop()
+
+engine = init_db_connection()
+
+
+@st.cache_data(ttl=30)
+def load_data_from_db(query):
+    try:
+        df = pd.read_sql_query(query, engine)
+        return df
+    except Exception as e:
+        logging.warning(f"Erreur requête SQL: {e}")
+        return pd.DataFrame()
+
+# ====================== LOAD FULL DATA =======================
+df = load_data_from_db("SELECT * FROM marriages")
+if df.empty:
+    st.error("Pas encore de données en tables 'marriages' (ca arrive).")
+    st.stop()
+
+df['age_at_marriage'] = pd.to_numeric(df['age_at_marriage'], errors='coerce')
+df['children_count'] = pd.to_numeric(df['children_count'], errors='coerce')
+df['years_since_marriage'] = pd.to_numeric(df['years_since_marriage'], errors='coerce')
+
+
+# ====================== CLOSE DB =============================
+#cursor.close()
+#conn.close()
+engine.dispose()
+
+
+# ====================== AUTOREFRESH ==========================
+if len(df) != 10_000:
+    st_autorefresh(interval=5000, limit=None, key="autorefresh")
+
+
+
+
 # ====================== VISUALS - INTRO ==============================
-st.info(f"{len(df)} / 10 000 loaded.")
+# ====================== VUE D'ENSEMBLE ==============
 
+# Chargement des données principales
+df = load_data_from_db("SELECT * FROM marriages")
+df['age_at_marriage'] = pd.to_numeric(df['age_at_marriage'], errors='coerce')
+df['children_count'] = pd.to_numeric(df['children_count'], errors='coerce')
+df['years_since_marriage'] = pd.to_numeric(df['years_since_marriage'], errors='coerce')
 
+st.markdown('<div id="overview"></div>', unsafe_allow_html=True)
+st.markdown("## Vue d'ensemble")
 
-st.subheader("Mariage type : Love vs. Arranged")
-type_counts = df['marriage_type'].value_counts()
-fig1, ax1 = plt.subplots()
-ax1.bar(type_counts.index, type_counts.values, color=['skyblue', 'orange'])
-ax1.set_ylabel("Total")
-st.pyplot(fig1)
+# Métriques principales
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+
+    progress = len(df) / 10000
+    st.metric(
+        label="Progression", 
+        value=f"{len(df):,} / 10,000",
+        delta=f"{progress*100:.1f}% complété"
+    )
+    st.progress(progress)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with col2:
+    arranged_pct = (df['marriage_type'].value_counts().get('Arranged', 0) / len(df) * 100)
+    st.metric(
+        label="Mariages Arrangés", 
+        value=f"{arranged_pct:.1f}%",
+        delta=f"{100-arranged_pct:.1f}% d'amour"
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with col3:
+    avg_age = df['age_at_marriage'].mean()
+    st.metric(
+        label="Age Moyen Mariage", 
+        value=f"{avg_age:.1f} ans",
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with col4:
+    divorce_rate = (df['divorce_status'] == 'Yes').sum() / len(df) * 100
+    st.metric(
+        label="Taux de Divorce", 
+        value=f"{divorce_rate:.1f}%",
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Graphiques principaux côte à côte
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("Répartition des types")
+    
+    type_counts = df['marriage_type'].value_counts().reset_index()
+    type_counts.columns = ['Marriage_Type', 'Total']
+    
+    fig = px.pie(
+        type_counts,
+        values='Total',
+        names='Marriage_Type',
+        color_discrete_sequence=[COLORS['arranged'], COLORS['love']],
+        hole=0.4
+    )
+    
+    fig.update_traces(
+        textposition='inside', 
+        textinfo='percent+label',
+        textfont_size=14
+    )
+    
+    fig.update_layout(
+        showlegend=True,
+        template='plotly_white',
+        height=350
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with col2:
+    st.subheader("Distribution des âges")
+    
+    fig = px.histogram(
+        df,
+        x='age_at_marriage',
+        color='marriage_type',
+        nbins=20,
+        color_discrete_sequence=[COLORS['arranged'], COLORS['love']],
+        title=""
+    )
+    
+    fig.update_layout(
+        template='plotly_white',
+        height=350,
+        xaxis_title="Âge au mariage",
+        yaxis_title="Nombre de personnes"
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 
 # ========== SATISFACTION PAR MARIAGE (non divorcé) ==========
+
 st.title("Statistiques Satisfaction par Type de Mariage (non divorcés)")
 
 try:
-    # Lire la table complète (une seule version en base)
-    df_stats = pd.read_sql_query("SELECT * FROM satisfaction_by_marriage_type", engine)
+    df_stats = load_data_from_db("SELECT * FROM satisfaction_by_marriage_type")
 
     if not df_stats.empty:
         st.subheader("Répartition Satisfaction (Love vs. Arranged)")
 
-        # Affichage brut
         st.dataframe(df_stats)
 
-        # Pivot pour graphique empilé
-        pivot_df = df_stats.pivot(index='Marriage_Type', columns='Marital_Satisfaction', values='Count').fillna(0)
+        fig = px.bar(
+            df_stats,
+            x="Marital_Satisfaction",
+            y="Count",
+            color="Marriage_Type",
+            barmode="group",
+            text="Count",
+            title="Satisfaction selon le type de mariage (hors divorces)",
+            color_discrete_sequence=['#69b3a2', '#ff9933']  
+        )
 
-        fig, ax = plt.subplots(figsize=(8, 6))
-        pivot_df.plot(kind='bar', stacked=True, ax=ax, colormap='Set2')
-        ax.set_ylabel("Nombre de personnes")
-        ax.set_title("Satisfaction selon le type de mariage (hors divorces)")
-        ax.legend(title="Satisfaction")
-        st.pyplot(fig)
+        fig.update_layout(
+            xaxis_title="Niveau de satisfaction",
+            yaxis_title="Nombre de personnes",
+            legend_title="Type de mariage",
+            template="simple_white",
+            title_x=0.5
+        )
+
+        fig.update_traces(textposition="outside")
+
+        st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("Table satisfaction_by_marriage_type empty (for now hehe).")
 except Exception as e:
@@ -145,20 +330,45 @@ except Exception as e:
 
 # ========== SATISFACTION PAR TRANCHE D'AGE (à âge du mariage - non divorcé - marriage arrangé) ==========
 
-st.title("SATISFACTION PAR TRANCHE D'AGE (à âge du mariage - non divorcé - marriage arrangé)")
+st.title("SATISFACTION PAR TRANCHE D'AGE (à âge du mariage - non divorcé - par type de mariage)")
 
 try:
-    df_age = pd.read_sql_query("SELECT * FROM satisfaction_by_age_range", engine)
+    df_age = load_data_from_db("SELECT * FROM satisfaction_by_age_range")
 
     if not df_age.empty:
         st.dataframe(df_age)
 
-        pivot = df_age.pivot(index="Age_Range", columns="Marital_Satisfaction", values="Count").fillna(0)
-        fig, ax = plt.subplots(figsize=(10, 6))
-        pivot.plot(kind="bar", stacked=True, ax=ax)
-        ax.set_ylabel("Nombre de personnes")
-        ax.set_title("Satisfaction selon l'âge au moment du mariage")
-        st.pyplot(fig)
+        fig = px.bar(
+            df_age,
+            x="Age_Range",
+            y="Count",
+            color="Marital_Satisfaction",
+            facet_col="Marriage_Type",
+            barmode="stack",
+            text="Count",
+            category_orders={"Age_Range": sorted(df_age["Age_Range"].unique())},
+            color_discrete_sequence=px.colors.qualitative.Set2,
+            labels={
+                "Age_Range": "Tranche d'âge au mariage",
+                "Count": "Nombre de personnes",
+                "Marital_Satisfaction": "Satisfaction",
+                "Marriage_Type": "Type de mariage"
+            },
+            title="Satisfaction par âge au mariage et type de mariage"
+        )
+
+        fig.update_layout(
+            title_x=0.5,
+            legend_title_text="Satisfaction",
+            margin=dict(t=60, b=40),
+            template="simple_white",
+            uniformtext_minsize=8,
+            uniformtext_mode='hide'
+        )
+
+        fig.update_traces(textposition="inside")
+
+        st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("Table satisfaction_by_age_range empty.")
 except Exception as e:
@@ -167,258 +377,314 @@ except Exception as e:
 
 # ========== SATISFACTION PAR EDUCATION (education level - non divorcé - marriage arrangé) ==========
 
-st.title("SATISFACTION PAR EDUCATION (education level - non divorcé - marriage arrangé)")
+st.title("SATISFACTION PAR EDUCATION ET TYPE DE MARIAGE (non divorcé - par type de mariage)")
 
 try:
-    df_edu = pd.read_sql_query("SELECT * FROM satisfaction_by_education_level", engine)
+    df_edu = load_data_from_db("SELECT * FROM satisfaction_by_education_level")
 
     if not df_edu.empty:
         st.dataframe(df_edu)
 
-        pivot = df_edu.pivot(index="Education_Level", columns="Marital_Satisfaction", values="Count").fillna(0)
-        fig, ax = plt.subplots(figsize=(10, 6))
-        pivot.plot(kind="bar", stacked=True, ax=ax)
-        ax.set_ylabel("Nombre de personnes")
-        ax.set_title("Satisfaction selon le niveau d'éducation")
-        st.pyplot(fig)
+        fig = px.bar(
+            df_edu,
+            y="Education_Level",
+            x="Count",
+            color="Marital_Satisfaction",
+            facet_col="Marriage_Type",
+            barmode="group",
+            orientation="h",
+            color_discrete_map={
+                "Satisfied": "#2ca02c",
+                "Neutral": "#ff7f0e",
+                "Dissatisfied": "#d62728"
+            },
+            labels={
+                "Education_Level": "Niveau d'éducation",
+                "Count": "Nombre de personnes",
+                "Marital_Satisfaction": "Satisfaction",
+                "Marriage_Type": "Type de mariage"
+            },
+            title="Satisfaction selon le niveau d'éducation et le type de mariage"
+        )
+
+        fig.update_traces(texttemplate='%{x}', textposition='outside')
+        fig.update_layout(
+            title_x=0.5,
+            legend_title_text="Satisfaction",
+            template="plotly_white",
+            margin=dict(t=60, b=40),
+            yaxis=dict(autorange="reversed")
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("Table satisfaction_by_education_level empty.")
 except Exception as e:
-    st.warning("Tables not created (yet).")
+    st.warning(f"Erreur : {e}")
     #st.exception(e)
 
 
 # ========== SATISFACTION PAR RELGION (religion - non divorcé - marriage arrangé) ==========
 
-
-st.title("Satisfaction par Religion (Mariages Arrangés, non divorcés)")
-st.title("???????????????????? RACISTEEEEEEEEEEEE")
+st.title("Satisfaction par Religion : Mariages Arrangés vs Mariages d'Amour")
 
 try:
-    df_religion = pd.read_sql_query("SELECT * FROM satisfaction_by_religion_arranged", engine)
+    df_religion = load_data_from_db("SELECT * FROM satisfaction_by_religion_arranged")
 
     if not df_religion.empty:
         st.dataframe(df_religion)
 
-        grouped = df_religion.groupby("Religion")
-        n = len(grouped)
-        fig, axs = plt.subplots(nrows=(n + 1) // 2, ncols=2, figsize=(14, 6), squeeze=False)
-        axs = axs.flatten()
+        # Graphique clair : Religion en X, Marriage_Type en couleur, motifs pour satisfaction
+        fig = px.bar(
+            df_religion,
+            x="Religion",
+            y="Count",
+            color="Marriage_Type",  # Arranged vs Love
+            pattern_shape="Marital_Satisfaction",  # Motifs pour satisfaction
+            barmode="group",
+            labels={
+                "Count": "Nombre de personnes", 
+                "Religion": "Religion", 
+                "Marriage_Type": "Type de mariage",
+                "Marital_Satisfaction": "Satisfaction"
+            },
+            title="Satisfaction par Religion : Comparaison Arranged vs Love",
+            color_discrete_map={
+                "Arranged": "#FF6B6B",  # Rouge 
+                "Love": "#4ECDC4"       # Bleu
+            }
+        )
 
-        for i, (religion, group) in enumerate(grouped):
-            ax = axs[i]
-            labels = group["Marital_Satisfaction"]
-            sizes = group["Count"]
-            ax.pie(sizes, labels=labels, autopct="%1.1f%%", startangle=90)
-            ax.axis("equal")
-            ax.set_title(religion)
+        fig.update_layout(
+            height=700,
+            xaxis_tickangle=45,
+            margin=dict(b=150, t=100),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom", 
+                y=1.02,
+                xanchor="center",
+                x=0.5
+            )
+        )
+        
+        # Ajouter les valeurs sur les barres
+        fig.update_traces(
+            textposition='outside',
+            texttemplate='%{y}',
+            textfont_size=9
+        )
 
-        # Remove unused subplots
-        for j in range(i + 1, len(axs)):
-            fig.delaxes(axs[j])
-
-        st.pyplot(fig)
+        st.plotly_chart(fig, use_container_width=True)
+        
     else:
-        st.info("Table satisfaction_by_religion_arranged empty.")
+        st.info("Table satisfaction_by_religion_arranged vide.")
+        
 except Exception as e:
-    st.warning("Tables not created (yet).")
+    st.warning(f"Erreur : {e}")
     #st.exception(e)
-
-# ========== SATISFACTION PAR INTER-RELGION (religion - non divorcé - marriage arrangé) ==========
-
-st.title("SATISFACTION PAR INTER-RELGION (religion - non divorcé - marriage arrangé)")
-
-try:
-    df_inter_religion = pd.read_sql_query("SELECT * FROM satisfaction_by_inter_religion", engine)
-
-    if not df_inter_religion.empty:
-        st.dataframe(df_inter_religion)
-
-        pivot = df_inter_religion.pivot(index="Religion", columns="Marital_Satisfaction", values="Count").fillna(0)
-
-        fig, ax = plt.subplots(figsize=(10, 6))
-        im = ax.imshow(pivot.values, cmap="YlGnBu")
-
-        ax.set_xticks(range(len(pivot.columns)))
-        ax.set_yticks(range(len(pivot.index)))
-        ax.set_xticklabels(pivot.columns, rotation=45, ha="right")
-        ax.set_yticklabels(pivot.index)
-        ax.set_title("Heatmap : Satisfaction par Religion (Inter-Religion)")
-
-        for i in range(len(pivot.index)):
-            for j in range(len(pivot.columns)):
-                ax.text(j, i, int(pivot.iloc[i, j]), ha="center", va="center", color="black")
-
-        fig.colorbar(im, ax=ax)
-        st.pyplot(fig)
-    else:
-        st.info("Table satisfaction_by_inter_religion empty.")
-except Exception as e:
-    st.warning("Tables not created (yet).")
-    #st.exception(e)
-
 
 # ========== SATISFACTION PAR REVNUS (revenus - non divorcé - marriage arrangé) ==========
 
-st.title("SATISFACTION PAR REVNUS (revenus - non divorcé - marriage arrangé)")
+st.title("Satisfaction par Revenus : Mariages Arrangés vs Amour")
 
 try:
-    df_income = pd.read_sql_query("SELECT * FROM satisfaction_by_income_level", engine)
+    df_income = load_data_from_db("SELECT * FROM satisfaction_by_income_level")
 
     if not df_income.empty:
-        st.dataframe(df_income)
+        with st.expander("Voir les données"):
+            st.dataframe(df_income)
 
-        pivot = df_income.pivot(index="Income_Level", columns="Marital_Satisfaction", values="Count").fillna(0)
+        # Graphique principal : barres groupées par type de mariage
+        fig = px.bar(
+            df_income,
+            x="Income_Level",
+            y="Count",
+            color="Marriage_Type",
+            pattern_shape="Marital_Satisfaction",
+            barmode="group",
+            labels={
+                "Count": "Nombre de personnes", 
+                "Income_Level": "Niveau de revenu", 
+                "Marriage_Type": "Type de mariage",
+                "Marital_Satisfaction": "Satisfaction"
+            },
+            title="Satisfaction par niveau de revenu",
+            color_discrete_map={
+                "Arranged": "#FF6B6B",  # Rouge
+                "Love": "#4ECDC4"       # Bleu
+            }
+        )
 
-        fig, ax = plt.subplots(figsize=(10, 6))
-        pivot.plot(kind='barh', stacked=True, ax=ax, colormap="viridis")
+        fig.update_layout(
+            height=500,
+            xaxis_tickangle=45,
+            margin=dict(b=100)
+        )
+        
+        fig.update_traces(textposition='outside', texttemplate='%{y}', textfont_size=9)
 
-        ax.set_xlabel("Nombre de personnes")
-        ax.set_ylabel("Niveau de revenu")
-        ax.set_title("Satisfaction par revenu (mariages arrangés)")
-        st.pyplot(fig)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Légende simple
+        col1, col2 = st.columns(2)
+        with col1:
+            st.info("🔴 **Rouge** = Mariages arrangés")
+        with col2:
+            st.info("🔵 **Bleu** = Mariages d'amour")
+            
     else:
-        st.info("Table satisfaction_by_income_level empty.")
+        st.info("Table satisfaction_by_income_level vide.")
+        
 except Exception as e:
-    st.warning("Tables not created (yet).")
+    st.warning(f"Erreur : {e}")
     #st.exception(e)
 
-# ========== SATISFACTION PAR APPROBATION PARENTAL (papa mama - non divorcé - marriage arrangé) ==========
+# ==================================================================================
 
-st.title("SATISFACTION PAR APPROBATION daddy (papa mama - non divorcé - marriage arrangé)")
-
-try:
-    df_approval = pd.read_sql_query("SELECT * FROM satisfaction_by_parental_approval", engine)
-
-    if not df_approval.empty:
-        st.dataframe(df_approval)
-
-        grouped = df_approval.groupby("Parental_Approval")
-
-        for label, group in grouped:
-            st.subheader(f"Approbation parentale : {label}")
-            fig, ax = plt.subplots()
-            ax.pie(group["Count"], labels=group["Marital_Satisfaction"], autopct="%1.1f%%", startangle=90)
-            ax.axis('equal')
-            st.pyplot(fig)
-    else:
-        st.info("Table satisfaction_by_parental_approval empty.")
-except Exception as e:
-    st.warning("Tables not created (yet).")
-    #st.exception(e)
-
-
-# *** 
-st.title("Partie 2 : Ce qu'il ne faut pas faire.")
-
-# ***
+# ====================== SECTION DIVORCES ====================
+st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+st.markdown('<div id="divorces"></div>', unsafe_allow_html=True)
+st.markdown("## Quelques tips pour pas divorcer quand même ..")
 
 # ========== DIVORCE PAR RELIGION (religin - divorcé - marriage arrangé) ==========
 
-st.title("Taux de Divorce par Religion (Mariages Arrangés)")
+st.title("Taux de Divorce par Religion (Mariage Type)")
 
 try:
-    df_div = pd.read_sql_query("SELECT * FROM divorces_by_religion", engine)
+    df_div = load_data_from_db("SELECT * FROM divorces_by_religion")
 
     if not df_div.empty:
         st.dataframe(df_div)
 
-        fig, ax = plt.subplots(figsize=(8, 5))
-        df_div_sorted = df_div.sort_values("Count", ascending=True)
-        ax.barh(df_div_sorted["Religion"], df_div_sorted["Count"], color="crimson")
-        ax.set_xlabel("Nombre de divorces")
-        ax.set_ylabel("Religion")
-        ax.set_title("Divorces par religion (mariages arrangés)")
-        st.pyplot(fig)
+        # Barres groupées : une par type de mariage, groupées par religion
+        fig = px.bar(
+            df_div,
+            x="Count",
+            y="Religion",
+            color="Marriage_Type",
+            orientation="h",
+            text="Count",
+            barmode="group",
+            color_discrete_map={
+                "Arranged": "#FF7F0E",
+                "Love": "#1F77B4"
+            },
+            labels={
+                "Count": "Nombre de divorces",
+                "Religion": "Religion",
+                "Marriage_Type": "Type de mariage"
+            },
+            title="Nombre de divorces par religion et type de mariage"
+        )
+
+        fig.update_layout(
+            yaxis={'categoryorder': 'total ascending'},
+            height=600
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("Table divorces_by_religion empty.")
+        st.info("Table divorces_by_religion vide.")
 except Exception as e:
-     st.warning("Tables not created (yet).")
+    st.warning(f"Erreur : {e}")
     #st.exception(e)
 
 
 # ========== DIVORCE PAR EDUCATION (education - divorcé - marriage arrangé) ==========
 
-st.title("Taux de Divorce par Niveau d'Éducation (Mariages Arrangés)")
+st.title("Taux de Divorce par Niveau d'Éducation (Mariage Type)")
 
 try:
-    df_div_edu = pd.read_sql_query("SELECT * FROM divorces_by_education", engine)
+    df_div_edu = load_data_from_db("SELECT * FROM divorces_by_education")
 
     if not df_div_edu.empty:
         st.dataframe(df_div_edu)
 
-        fig, ax = plt.subplots(figsize=(7, 7))
-        ax.pie(
-            df_div_edu["Count"],
-            labels=df_div_edu["Education_Level"],
-            autopct="%1.1f%%",
-            startangle=90,
-            colors=plt.cm.Paired.colors
+        # Barres groupées : niveau d'éducation vs type de mariage
+        fig = px.bar(
+            df_div_edu,
+            x="Education_Level",
+            y="Count",
+            color="Marriage_Type",
+            barmode="group",
+            text="Count",
+            color_discrete_map={
+                "Arranged": "#FF7F0E",
+                "Love": "#1F77B4"
+            },
+            labels={
+                "Count": "Nombre de divorces",
+                "Education_Level": "Niveau d'éducation",
+                "Marriage_Type": "Type de mariage"
+            },
+            title="Divorces par niveau d'éducation et type de mariage"
         )
-        ax.set_title("Répartition des divorces par niveau d'éducation (arrangés)")
-        st.pyplot(fig)
+
+        fig.update_layout(
+            xaxis_tickangle=-45,
+            height=500
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
     else:
-      st.info("Table divorces_by_education empty.")
+        st.info("Table divorces_by_education vide.")
 except Exception as e:
-     st.warning("Tables not created (yet).")
+    st.warning(f"Erreur : {e}")
     #st.exception(e)
 
 
 # ========== DIVORCE PAR SPOSUE WORKING (spouse - divorcé - marriage arrangé) ==========
 
 
-st.title("Divorces selon le statut professionnel du conjoint (Mariages Arrangés)")
+st.title("Se marier avec ses collègues ? nan mais on est ou la")
 
 try:
-    df_spouse = pd.read_sql_query("SELECT * FROM divorces_by_spouse_working", engine)
+    df_spouse = load_data_from_db("SELECT * FROM divorces_by_spouse_working")
 
     if not df_spouse.empty:
         st.dataframe(df_spouse)
 
-        fig, ax = plt.subplots(figsize=(8, 5))
-        ax.barh(df_spouse["Spouse_Working"], df_spouse["Count"], color="salmon")
-        ax.set_xlabel("Nombre de divorces")
-        ax.set_ylabel("Conjoint travaille ?")
-        ax.set_title("Divorces par statut du conjoint (arrangé)")
-        st.pyplot(fig)
+        fig = px.bar(
+            df_spouse,
+            x="Count",
+            y="Spouse_Working",
+            color="Marriage_Type",
+            orientation="h",
+            text="Count",
+            barmode="group",
+            color_discrete_map={
+                "Arranged": "#EF553B",
+                "Love": "#636EFA"
+            },
+            labels={
+                "Count": "Nombre de divorces",
+                "Spouse_Working": "Conjoint travaille ?",
+                "Marriage_Type": "Type de mariage"
+            },
+            title="Divorces selon le spouse working situation"
+        )
+
+        fig.update_layout(
+            height=500,
+            yaxis=dict(categoryorder='total ascending')
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
     else:
-       st.info("Table divorces_by_education empty.")
+        st.info("Table divorces_by_spouse_working vide.")
 except Exception as e:
-     st.warning("Tables not created (yet).")
+    st.warning(f"Erreur : {e}")
     #st.exception(e)
 
 
-# ========== ALORS ???? LOVE SOLUTION : ==========
+
+# ========== ALORS ???? ==========
 
 st.title("Alors alors alors ?")
 
 st.markdown("""
--  Postgraduate (pas si con, mais pas trop intelligent)
--  Religion: Muslim (cheh bardella)
--  Income: Middle (0 michto)
--  Parental Approval: High (euh cool ?)
--  Age at Marriage: 27–30 (top)
--  Spouse Working: No (bosser avec son conjoint NONONONONON)
+N'hésite plus !
+Commande ton truc sur amazon !!
 """)
 
-
-st.title("Combien d'enfants ? ")
-
-
-try:
-    df_kids = pd.read_sql_query("SELECT * FROM children_count_by_profile", engine)
-
-    if not df_kids.empty:
-        st.dataframe(df_kids)
-
-        fig, ax = plt.subplots()
-        ax.bar(df_kids["Children_Count"], df_kids["Count"], color="purple")
-        ax.set_xlabel("Nombre d'enfants")
-        ax.set_ylabel("Nombre de couples")
-        ax.set_title("Répartition des enfants pour le profil (arrangé, 27-30, etc...)")
-        st.pyplot(fig)
-    else:
-        st.info("Table children_count_by_profile empty.")
-except Exception as e:
-     st.warning("Tables not created (yet).")
-    #st.exception(e)

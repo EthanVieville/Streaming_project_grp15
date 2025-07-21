@@ -1,4 +1,4 @@
-import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.apache.hadoop.fs.{FileSystem, Path, RawLocalFileSystem}
 
@@ -7,7 +7,7 @@ import java.io.{File, FileInputStream, PrintWriter}
 import java.util.Properties
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{floor, lit, row_number}
-
+import scala.util.Using
 
 object Producer {
 
@@ -26,8 +26,10 @@ object Producer {
     val f = new File(progressFile)
     if (!f.exists) 0
     else {
-      val lines = Source.fromFile(f).getLines().toList
-      if (lines.nonEmpty) lines.head.toInt else 0
+      Using.resource(Source.fromFile(f)) { source =>
+        val lines = source.getLines().toList
+        if (lines.nonEmpty) lines.head.toInt else 0
+      }
     }
   }
 
@@ -46,13 +48,15 @@ object Producer {
       .master("local[*]") // exec local
       .getOrCreate()
 
+    import spark.implicits._
+
     spark.sparkContext.setLogLevel("WARN")
     // Empeche la creation des fichier checkpoint CRC (checksum HDFS dont on se passe volontier).
     spark.sparkContext.hadoopConfiguration.set(
       "fs.file.impl",
       classOf[RawLocalFileSystem].getName
     )
-    import spark.implicits._
+
 
     // Charge CSV + mise en cache
     val rawDF = spark.read
@@ -65,7 +69,7 @@ object Producer {
 
     val withChunksDF = rawDF
       .withColumn("line_number", row_number().over(w)) // new col line_number avec l'application de la WF
-      .withColumn("chunkId", floor(($"line_number" - 1) / props.getProperty("chunk.size").toInt).cast("int")) // new col chunkId, on commence à 0. On veut chunk.size chunks. Cast en INT, pck un float c'est débile.
+      .withColumn("chunkId", floor(($"line_number" - 1) / props.getProperty("chunk.size").toInt).cast("int")) // new col chunkId, on commence à 0. On veut chunk.size chunks. Cast en INT.
       .cache()
 
 
@@ -79,9 +83,8 @@ object Producer {
       .getAs[Int]("numChunks")
 
 
-
     // Reprend depuis le dernier chunk dans le progress
-    var startChunk = readProgress()
+    val startChunk = readProgress()
     if (startChunk >= numChunks) {
       println(s"[INFO] $numChunks chunk ont déjà était fait.")
       spark.stop()
@@ -97,7 +100,7 @@ object Producer {
     for (chunkId <- startChunk until numChunks) {
       val t0 = System.nanoTime()
 
-      // DRPO les col inutiles pour le traitement.
+      // DROP les col inutiles pour le traitement.
       val chunkDF = withChunksDF
         .filter($"chunkId" === chunkId)
         .drop("line_number", "chunkId")
@@ -106,7 +109,7 @@ object Producer {
       // Write chunk into CSV
       val tmpPath = new Path(s"${props.getProperty("output.dir")}/temp/chunk_$chunkId")
       chunkDF.coalesce(1)
-        .write.mode("overwrite")
+        .write.mode("overwrite") // précaution
         .option("header", "true")
         .csv(tmpPath.toString)
 
@@ -145,7 +148,7 @@ object Producer {
       Thread.sleep(props.getProperty("pause.ms").toInt)
     }
 
-    println(s"[INFO] $numChunks Kuài yǐ chénggōng fāsòng (chinois pour c'est good, ca a été envoyés.")
+    println(s"[INFO] $numChunks send.")
     spark.stop()
   }
 }
