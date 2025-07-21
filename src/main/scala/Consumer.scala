@@ -8,10 +8,9 @@ import java.util.Properties
 import StatisticsMaker._
 import load_schema._
 import schemas.schemas._
-import org.apache.spark.sql.streaming.{StreamingQuery}
+import org.apache.spark.sql.streaming.StreamingQuery
 
 object Consumer {
-
 
 
   def main(args: Array[String]): Unit = {
@@ -26,6 +25,16 @@ object Consumer {
     val pgUser = props.getProperty("postgres.user")
     val pgPwd = props.getProperty("postgres.password")
 
+    // === Init Spark ===
+    val spark = SparkSession.builder()
+      .appName("KafkaToPostgreConsumer")
+      .master("local[*]")
+      .getOrCreate()
+
+    spark.sparkContext.setLogLevel("WARN")
+    import spark.implicits._
+
+
     // === FUNC pour write DF to postegre
     def writeStatStream(df: DataFrame, checkpointPath: String, tableName: String): StreamingQuery = {
       df.writeStream
@@ -37,16 +46,6 @@ object Consumer {
         }
         .start()
     }
-
-
-    // === Init Spark ===
-    val spark = SparkSession.builder()
-      .appName("KafkaToPostgreConsumer")
-      .master("local[*]")
-      .getOrCreate()
-
-    spark.sparkContext.setLogLevel("WARN")
-    import spark.implicits._
 
 
     // DROP BEFORE INSERT
@@ -69,7 +68,7 @@ object Consumer {
 
 
     // === WRITER POSTGRES personnalisé pour insérer dans POSTGRE
-    val postgresWriter  = new ForeachWriter[Row] {
+    val postgresWriter: ForeachWriter[Row] = new ForeachWriter[Row] {
       var connection: Connection = _
       var statement: PreparedStatement = _
 
@@ -97,7 +96,7 @@ object Consumer {
 
     // == INSERT MARRIAGES (full data)
     val InsertFullDataSet = parsedDF.writeStream
-      .foreach(postgresWriter )
+      .foreach(postgresWriter)
       .outputMode("append") // pour le full dataset, on append  juste les lignes donc aucun soucis.
       .start()
 
@@ -109,24 +108,16 @@ object Consumer {
 
     val queries = List(
       InsertFullDataSet,
-      writeStatStream(satisfactionByMarriageType(parsedDF),         "checkpoints/statistics/satisfactionMariage",          "satisfaction_by_marriage_type"),
-      writeStatStream(satisfactionByAgeRange(parsedDF),             "checkpoints/statistics/satisfactionAgeRange",         "satisfaction_by_age_range"),
-      writeStatStream(satisfactionByEducationLevel(parsedDF),       "checkpoints/statistics/satisfactionEducationLevel",   "satisfaction_by_education_level"),
-      writeStatStream(satisfactionByReligionArranged(parsedDF),     "checkpoints/statistics/satisfactionReligionArranged", "satisfaction_by_religion_arranged"),
-      writeStatStream(satisfactionByInterReligion(parsedDF),        "checkpoints/statistics/satisfactionInterReligion",    "satisfaction_by_inter_religion"),
-      writeStatStream(satisfactionByIncomeLevel(parsedDF),          "checkpoints/statistics/satisfactionIncomeLevel",      "satisfaction_by_income_level"),
-      writeStatStream(satisfactionByParentalApproval(parsedDF),     "checkpoints/statistics/satisfactionParentalApproval", "satisfaction_by_parental_approval"),
-      writeStatStream(divorcesByReligion(parsedDF),                 "checkpoints/statistics/divorcesByReligion",           "divorces_by_religion"),
-      writeStatStream(divorcesByEducation(parsedDF),                "checkpoints/statistics/divorcesByEducation",          "divorces_by_education"),
-      writeStatStream(divorcesBySpouseWorking(parsedDF),            "checkpoints/statistics/divorcesBySpouseWorking",      "divorces_by_spouse_working"),
-      writeStatStream(childrenCountByIdealProfile(parsedDF),        "checkpoints/statistics/childrenByProfile",            "children_count_by_profile")
+      writeStatStream(satisfactionByMarriageType(parsedDF), "checkpoints/statistics/satisfactionMariage", "satisfaction_by_marriage_type"),
+      writeStatStream(satisfactionByAgeRange(parsedDF), "checkpoints/statistics/satisfactionAgeRange", "satisfaction_by_age_range"),
+      writeStatStream(satisfactionByEducationLevel(parsedDF), "checkpoints/statistics/satisfactionEducationLevel", "satisfaction_by_education_level"),
+      writeStatStream(satisfactionByReligion(parsedDF), "checkpoints/statistics/satisfactionReligionArranged", "satisfaction_by_religion_arranged"),
+      writeStatStream(satisfactionByIncomeLevel(parsedDF), "checkpoints/statistics/satisfactionIncomeLevel", "satisfaction_by_income_level"),
+      writeStatStream(divorcesByReligion(parsedDF), "checkpoints/statistics/divorcesByReligion", "divorces_by_religion"),
+      writeStatStream(divorcesByEducation(parsedDF), "checkpoints/statistics/divorcesByEducation", "divorces_by_education"),
+      writeStatStream(divorcesBySpouseWorking(parsedDF), "checkpoints/statistics/divorcesBySpouse", "divorces_by_spouse_working"),
     )
 
     queries.foreach(_.awaitTermination())
-
-
-
   }
-
-
 }

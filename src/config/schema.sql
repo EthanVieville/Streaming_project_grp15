@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS satisfaction_by_marriage_type (
 -- Satisfaction par mariage, par tranche d'age, pas divorcé
 CREATE TABLE IF NOT EXISTS satisfaction_by_age_range (
   Age_Range TEXT,
+  Marriage_Type TEXT,
   Marital_Satisfaction TEXT,
   Count BIGINT
 );
@@ -38,61 +39,48 @@ CREATE TABLE IF NOT EXISTS satisfaction_by_age_range (
 -- Satisfaction par education level
 CREATE TABLE IF NOT EXISTS satisfaction_by_education_level (
   Education_Level TEXT,
+  Marriage_Type TEXT,
   Marital_Satisfaction TEXT,
   Count BIGINT
 );
 
--- Satisfaction par relgion WOUAHHH??????
+--
 CREATE TABLE IF NOT EXISTS satisfaction_by_religion_arranged (
   Religion TEXT,
+  Marriage_Type TEXT,
   Marital_Satisfaction TEXT,
   Count BIGINT
 );
 
--- Satisfaction par inter religion
-CREATE TABLE IF NOT EXISTS satisfaction_by_inter_religion (
-  Religion TEXT,
-  Marital_Satisfaction TEXT,
-  Count BIGINT
-);
 
 -- Satisfaction par revenus
 CREATE TABLE IF NOT EXISTS satisfaction_by_income_level (
   Income_Level TEXT,
+  Marriage_Type TEXT,
   Marital_Satisfaction TEXT,
   Count BIGINT
 );
 
--- Satisfaction par approbation des parents
-CREATE TABLE IF NOT EXISTS satisfaction_by_parental_approval (
-  Parental_Approval TEXT,
-  Marital_Satisfaction TEXT,
-  Count BIGINT
-);
 
--- DIVORCE PAR RELIGION AHAHAHAHAHAHAH
+-- DIVORCE PAR RELIGION
 CREATE TABLE IF NOT EXISTS divorces_by_religion (
   Religion TEXT,
+  Marriage_Type TEXT,
   Count BIGINT
 );
 
 -- DIVORCE PAR EDUCATION
 CREATE TABLE IF NOT EXISTS divorces_by_education (
   Education_Level TEXT,
+  Marriage_Type TEXT,
   Count BIGINT
 );
 
 -- DIVORCE PAR SPOUSE WORKING
 CREATE TABLE IF NOT EXISTS divorces_by_spouse_working (
   Spouse_Working TEXT,
+  Marriage_Type TEXT,
   Count BIGINT
 );
-
--- FIN : combien d'enfants ??
-CREATE TABLE IF NOT EXISTS children_count_by_profile (
-  Children_Count TEXT,
-  Count BIGINT
-);
-
 
 
