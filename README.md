@@ -1,3 +1,5 @@
+### Postegre
+
 Télécharger et extraire:
 https://archive.apache.org/dist/kafka/3.7.0/kafka_2.13-3.7.0.tgz
 
@@ -5,19 +7,19 @@ Télécharger :
 https://www.enterprisedb.com/downloads/postgres-postgresql-downloads
 
 Version 17.5 W64
-Lancer le fichier, tout laisser par défault, sauf le mdr, mettre 1234 mdrrrrr
+Lancer le fichier, tout laisser par défault, sauf le mdp, mettre 1234 (no comment)
 
 Ensuite go variables d'environnement, variables système on rajoute dans path :
-C:\Program Files\PostgreSQL\17\bin
+"C:\Program Files\PostgreSQL\17\bin"
 
 
 ----
 
-## Truc à lancer : 
+## Outils à lancer : 
 
-#### La BD mdr : 
+#### BD : 
 
-lauch le script run.sh : 
+lauch le script run.sh (créer la base) :  
 git bash sur la racine du repo : ./run.sh
 
 Launch kafka listener : 
@@ -39,12 +41,7 @@ http://localhost:4040/jobs/
 
 VIZ : 
 
-à pip install :
-psycopg2
-streamlit
-pandas
-matplotlib
-sqlalchemy
+(faire les pip install nécessare, conseil très pro)
 
 cd streamlit-app-py
 
