@@ -34,7 +34,6 @@ object Consumer {
     import spark.implicits._
 
 
-    //// === FUNC pour write DF to postegre
     // === FUNC pour write DF to postegre
     def writeStatStream(df: DataFrame, checkpointPath: String, tableName: String): StreamingQuery = {
       df.writeStream
