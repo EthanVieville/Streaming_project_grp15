@@ -1,3 +1,4 @@
+
 import StatisticsMaker._
 import load_schema._
 import org.apache.spark.sql.functions._
@@ -34,7 +35,6 @@ object Consumer {
     import spark.implicits._
 
 
-    //// === FUNC pour write DF to postegre
     // === FUNC pour write DF to postegre
     def writeStatStream(df: DataFrame, checkpointPath: String, tableName: String): StreamingQuery = {
       df.writeStream
@@ -92,7 +92,7 @@ object Consumer {
         if (connection != null) connection.close()
       }
     }
-
+    
     // == INSERT MARRIAGES (full data)
     val insertFullDataset = parsedDF.writeStream
       .foreach(postgresWriter)
@@ -102,8 +102,7 @@ object Consumer {
 
     // ======= STATISTICS ========
 
-    // Ici on checkpoint + overwrite. On fait les groupby sur les chunks du full dataset. On as donc besoin d'une "save" du groupBy, pour les cumulés (d'ou le checkpoint)
-    // Et on overwrite pour cumulé d'un coup.
+    // Ici on checkpoint. On fait les groupby sur les chunks du full dataset. On as donc besoin d'une "save" du groupBy, pour les cumulés (d'ou le checkpoint)
 
     val queries = List(
       insertFullDataset,
