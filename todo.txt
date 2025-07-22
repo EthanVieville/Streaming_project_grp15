@@ -1,183 +1,133 @@
-PARLER DU SWITCH DE SQLITE A POSTGRE
+Voila en gros les thèmes abordés à aborder sur chaque slide / graph :
 
-SQLite est nul pour gérer les processus simultanés
-Donc pour les multi-stats c chaud zebi
 
-1234
+[SLIDE 1] 
 
-5432
+Bonsoir
 
+Nous sommes une start-up spécialisé en love solution. 
 
-ID,  
-Marriage_Type, : LOVE / ARRANGED
-Age_at_Marriage,  : tg
-Gender, : tg
-Education_Level, 
-Caste_Match,  : SAME  / DIFFERENT 
-Religion,
-Parental_Approval,
-Urban_Rural,
-Dowry_Exchanged, dote
-Marital_Satisfaction,
-Divorce_Status,
-Children_Count,
-Income_Level,
-Years_Since_Marriage,
-Spouse_Working, est ce qu'il bossent ensemble
-Inter-Caste, pas la meme origine en gros
-Inter-Religion wallah vs saint jesus joseph
+[SLIDE 2]
 
-Problématique : ...l'amour…? mmmmm yeah
+Si vous êtes venues nous voir aujourd'hui c'est que vous avez des difficultés à trouver l'amour. 
 
-COMMENT REUSSIR UN BON MARRIAGE ARRANGE ? 
+Et c'est normal, regardez-vous.
 
-(on précise qu'on ne sera pas politique ici, il ne s'agit pas de jugé les pratiques des uns et des autres, aussi machiste qu'elles soient). 
-(oui)
+Vous en avez marre de chercher chaussure à votre pied.
 
-bel intro :
+Mais on as la solution.
 
-Vous êtes nul en amour ? Vous êtes timide ? Vous êtes moche peut être ? Vous n'êtes pas Ethan ??? 
-eh bien ce n'est pas grave. 
-On peut arranger ça pour vous. 
-En s'inspirant de l'immense pays qu'est l'Inde (et les autres pays qui ont eu cette conne d'idée, mais ici c'est l'inde, coucou nabil), on peut travailler avec vous, pour faire de vous une personne comblé, trouver votre moitié, et trouver le bonheur. 
-Pourquoi l'inde ? eh bien c'est un des pays qui a le plus contribué à l'amour, oui oui, ils ont inventé le Kamasutra. Pour l'avoir lu environ 56 fois, je peux vous garantir que ca en balance de l'amour.
+[SLIDE 3]
 
+Pourquoi ne pas achter cette chaussure directement (oui) ? 
 
-Montrer satifaciton marriage arrangé / pas arrangé. 
-On voit que c'est un peu similaire niveau satisfaction, qu'est ce qu'on peut tirer de ça ? eh bien ca sert à rien de s'emmerder à chercher quelqu'un qui nous correspond vraiment quand on peut demander a papa de commander un partenaire sur amazon pour noel ? 
+Le marriage arrangé. El Matrimonio concertado
 
+Nous sommes des fervents défenseurs de cette institution merveilleuse qui consiste a commander son partenaire sur amazon pour le 14 février. 
 
+[SLIDE 4] 
 
+Notre solution s'articule autour de notre conviction première :
 
-Mais nous, on se soucis vraiment de vous. on vous propose plus que ça. Il ne s'agit pas d'organiser votre mariage arrangé, mais de vous aider à le rendre source de bonheur. 
+Le mariage arrangé est aussi bien que le mariage par amour. 
 
-Alors on va utiliser les chiffres pour vous indiquer comment maximiser vos chance de bonheur avec le partenaire que vous aurez acheté à l'aveugle, euh choisis. 
+Et c'est ce que nous allons vous présenter et prouver aujourd'hui. En plus de vous donner quelques règles d'or, à respecter soigneusement, lors de votre futurs mariage arrangé.
 
---- 
 
-Tout ca c'est du blabla, nous on sort les caractéristiques débiles liées au taux de mariages le plus élevé, et à la fin, on dira juste faut être ca :
-- 
-- 
-- 
-etc... 
+[SLIDE 5]
 
 
+Pour ce faire, on s'est basé sur les données d'un illustre pays pratiquant du mariage arrangé depuis des siècles. L'inde, yala. 
 
------
+Ces données ont été finement analysés par nos analystes. 
 
-Est ce que l'age sa joue ? 
+Dans ces données on as : 
 
-Pour gens pas divorcé 
-=> Quelle tranche d'âge (à date du mariage) a la satifaction la plus élevé, chez les non divorcés
+blablabla
 
+Mais surtout on as le Marital Satisfaction et le Divorce Status, qui vont nous servir d'indicateur premier. 
 
-Faut se marier à cette âge en gros
+Donc sans plus tardé. 
 
-(comparer avec non arrangé ?)
 
----
+[VIZ 1]
 
-Education level, est ce que être con ca joue ? 
-=> Quelle niveau d'éduation a le plus de satisfaction chez les pas divorcés
+Répartition des types de mariages 
 
+A savoir qu'on as plus de mariages arrangés. Donc à pondérer sur les stats qui suivront. Qu'on as proportionnellement plus de mariage arrangés.
 
+[VIZ 2]
 
---- 
+Satisfaction selon type de mariage. 
 
-Quelle religion ? Est ce qu'il faut se convertir ? amdoulilah
-Déjà on sort la répartion par religion. Ce sera pas égal. 
-Donc on met à l'échelle. 
-Et on compare ça : 
-=> Quelle religion à le meilleure taux de satisfaction, chez les non divorcés 
+Constat : Mariage arrangé ou Love ont le même niveau de satisfaction, donc ca va dans notre sens. 
 
+[VIZ 3]
 
-+ 
+Satisfaction par tranche d'âge à âge du mariage. 
 
+Constat : Encore une fois, c'est pareil. Peut importe l'âge à laquele on se marie, amour ou arranged, ca ne change rien. 
 
-Inter religion ? 
+Donc ne perdez pas espoir
 
 
---- 
+[VIZ 4]
 
-Income level
 
-Le fric c'est chic ? c'est beau le kamasutra mais au final est ce que c'est la thune qui fait tout ? car comme la dit Ghandi "La vie est un mystère qu'il faut vivre, et non un problème à résoudre"
-Voila t'en fait ce que tu veux
+Même chose, le niveau d'étude. 
 
-Quelle niveau de revenus a le niveau de satisfaction le plus élevé chez les non divorcés 
+Constat : QUe ce soit amour, arrangés, les gens ont le même niveau de bonheur. 
 
----
+[VIZ 5]
 
 
-L'approbation des parents ? 
-Eh oui ados rebelles
+Religion pareil
 
-est ce que ne pas l'avoir ca rend plus heureux ? 
+Constat : peut importe quelle religion vous avez, que vous choissiez mariage arrangé ou love
+Vous serez heureux ou mal heureux pareil mdrr lol jrespir pu
 
 
--------------------
-ET Maintenant, 
-que faut-il ne pas faire ?
-------------------
+[VIZ 6]
 
-Quelle religion a le plus haut taux de divorce mdrr
 
+Niveau de revenues du couple
 
----
+Constat : pareil frérot ta compris
 
-Education, on parlait de l'impact que ca peut avoir
 
-Mais est ce que ca joue dans l'autre sens également ? 
-Peut être qu'il faut être ni trop con et ni trop intelligent
+[VIZ 7]
 
-Donc divorce élevé par niveau éducation
----
 
+Quelques conseils quand même. Si c'état si facile pas tout le monde le ferez
 
-Spouse working ??? 
 
-Est ce que faut travailler avec son conjoint ? 
-divorce par spouse working
 
+Parmis toutes les religions, qui sont toutes à égalités, on la vue, juste les indous (liprane mdr) sont sur représentés. 
 
+C'est ce qui ase sont mariés par mariage arrangés qui divorce le plus. 
 
-==========================
+Donc attention, vous pouvez quitter votre religion si vous voulez
 
 
-uen fois tout ça, on passe aux conclus. 
+[VIZ 8]
 
-Voici ce qu'il faut être (oui carrément) : 
-- 
--
--
--
 
-Et voici ce qu'il faut pas faire : 
--
--
--
--
--
+Même chose chez les gens qui ont du niveau d'étude. Sauf chez les PHD. 
 
+Donc ici, si vous voulez maximiser vos chances de pas divorcern obtenez un Doctorat, facile.
 
-On met tout les trucs à faire en commun. 
-et on regarde le nombre d'enfant que les gens ont
+[VIZ 9]
 
-on conclus la dessus :
 
-En étant ça, vous serez heureux et vous aurez x enfants. 
-C'est les chiffres qui le disent
 
+Même si c'est minime ici, on observe que les gens qui sont mariés avec des gens avec qui ils travailent divorcent moins. 
 
+Donc mariez vous avec votre collègue, par précaution.
 
 
 
-- marriage arrangé 
-- age 27 - 30 
-- postgraduate
-- muslim
-- middle revenu
-- parent high
-- spouse working no
+
+
+
 
 

@@ -22,23 +22,25 @@ object load_schema {
   // ===== (PRE) DROP =====
 
   def dropExistingTables(pgUrl: String, pgUser: String, pgPwd: String): Unit = {
-    val conn = DriverManager.getConnection(pgUrl, pgUser, pgPwd)
-    val stmt = conn.createStatement()
+    val conn = DriverManager.getConnection(pgUrl, pgUser, pgPwd) // connect to postgres bd
+    val stmt = conn.createStatement() // stmt pour exec sql
 
     try {
       println(" [CLEANING] Drop ALL user tables...")
 
-      // Tape le schéma public pas sytème
+      // Get Schema (tables)
       val rs = stmt.executeQuery(
         """
            SELECT tablename FROM pg_tables WHERE schemaname = 'public';
         """.stripMargin)
 
+      // list pour stock les tables names
       val tables = Iterator.continually((rs.next(), rs))
-        .takeWhile(_._1)
-        .map(_._2.getString("tablename"))
+        .takeWhile(_._1) // while rs.next() == true
+        .map(_._2.getString("tablename")) // table name
         .toList
 
+      // DROP
       tables.foreach { table =>
         stmt.execute(s"""DROP TABLE IF EXISTS "$table" CASCADE;""")
       }
