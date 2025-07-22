@@ -3,9 +3,9 @@ import org.apache.spark.sql.functions._
 
 object StatisticsMaker {
 
-  def writeStatToPostgres(df: DataFrame, tableName: String, url: String, user: String, password: String, overwrite: Boolean = true): Unit = {
+  def writeStatToPostgres(df: DataFrame, tableName: String, url: String, user: String, password: String): Unit = {
     df.write
-      .mode(if (overwrite) "overwrite" else "append")// on overwrite pas par défault. (même si on le fait au final mdr)
+      .mode("overwrite" ) // stats en groupBy, donc on overwrite, pour cumuler
       .format("jdbc")
       .option("url", url)
       .option("dbtable", tableName)

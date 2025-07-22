@@ -1,7 +1,8 @@
 import StatisticsMaker._
 import load_schema._
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{DataFrame, Dataset, ForeachWriter, Row, SparkSession}
+import org.apache.spark.sql.streaming.StreamingQuery
+import org.apache.spark.sql.{DataFrame, ForeachWriter, Row, SparkSession}
 import schemas.schemas._
 
 import java.io.FileInputStream
@@ -34,28 +35,16 @@ object Consumer {
 
 
     //// === FUNC pour write DF to postegre
-    //def writeStatStream(df: DataFrame, checkpointPath: String, tableName: String): StreamingQuery = {
-    //  df.writeStream
-    //    .outputMode("complete") // append (new lines only) / update (lines changed) / complete (re-write all)
-    //    // Techniquement, on drop les tables, on pourrait update. Mais par sécu.
-    //    .option("checkpointLocation", checkpointPath)
-    //    .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
-    //      val cleanedDF = batchDF.cache()
-    //      writeStatToPostgres(batchDF, tableName, pgUrl, pgUser, pgPwd, overwrite = true)
-    //      writeStatToPostgres(satisfactionByMarriageType(cleanedDF), "satisfaction_by_marriage_type", pgUrl, pgUser, pgPwd)
-    //      writeStatToPostgres(satisfactionByAgeRange(cleanedDF), "satisfaction_by_age_range", pgUrl, pgUser, pgPwd)
-    //      writeStatToPostgres(satisfactionByEducationLevel(cleanedDF), "satisfaction_by_education_level", pgUrl, pgUser, pgPwd)
-    //      writeStatToPostgres(satisfactionByReligion(cleanedDF), "satisfaction_by_religion_arranged", pgUrl, pgUser, pgPwd)
-    //      writeStatToPostgres(satisfactionByIncomeLevel(cleanedDF), "satisfaction_by_income_level", pgUrl, pgUser, pgPwd)
-    //      writeStatToPostgres(divorcesByReligion(cleanedDF), "divorces_by_religion", pgUrl, pgUser, pgPwd)
-    //      writeStatToPostgres(divorcesByEducation(cleanedDF), "divorces_by_education", pgUrl, pgUser, pgPwd)
-    //      writeStatToPostgres(divorcesBySpouseWorking(cleanedDF), "divorces_by_spouse_working", pgUrl, pgUser, pgPwd)
-    //
-    //      cleanedDF.unpersist() // Nettoie la mémoire
-    //    }
-    //    .start()
-    //}
-
+    // === FUNC pour write DF to postegre
+    def writeStatStream(df: DataFrame, checkpointPath: String, tableName: String): StreamingQuery = {
+      df.writeStream
+        .outputMode("complete") // append (new lines only) / update (lines changed) / complete (spark donne tout le DF)
+        .option("checkpointLocation", checkpointPath) // écrit l'état du stream. Et check le précédant checkpoint
+        .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+          writeStatToPostgres(batchDF, tableName, pgUrl, pgUser, pgPwd)
+        }
+        .start()
+    }
 
     // DROP BEFORE INSERT
     val drop = props.getProperty("drop.tables", "false").toBoolean
@@ -66,13 +55,13 @@ object Consumer {
 
     // === STREAM KAFKA
     val parsedDF = spark.readStream
-      .format("kafka")
+      .format("kafka") // src kafka
       .option("kafka.bootstrap.servers", props.getProperty("kafka.brokers"))
       .option("subscribe", props.getProperty("kafka.topic"))
-      .option("startingOffsets", "latest") // earliest / latest. Si on earliest, on as tout ce qui a été envoyé à kafka depuis le DEBUT.
+      .option("startingOffsets", "latest") // earliest / latest. Si earliest, on as tout ce qui a été envoyé à kafka depuis le DEBUT.
       .load()
-      .selectExpr("CAST(value AS STRING) as json")
-      .select(from_json($"json", marriageSchema).as("data")) // on utilise bien le schéma importé
+      .selectExpr("CAST(value AS STRING) as json") // get value toString
+      .select(from_json($"json", marriageSchema).as("data")) // parse JSON et applique le schmema de la table (propre, pour données globales)
       .select("data.*")
 
 
@@ -85,14 +74,14 @@ object Consumer {
         connection = DriverManager.getConnection(pgUrl, pgUser, pgPwd)
         val insertSQL =
           """INSERT INTO marriages VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-             ON CONFLICT (ID) DO NOTHING""" // Si conflit, on ignore (pour stabilité), ici ca agit + pour doublon, si un doublon est capté, on l'ignore (donc insère pas)
+             ON CONFLICT (ID) DO NOTHING""" // Si conflit, on ignore (pour stabilité), ici ca agit + pour doublon, si un doublon est capté, on l'ignore (donc insère pas). Comme on as 10k lignes pile
         statement = connection.prepareStatement(insertSQL)
         true
       }
 
       def process(row: Row): Unit = {
-        // -1 correction entre JDBC et SPARK car index différent et insère null en base si la valeur de col est nul
-        for (i <- 1 to row.length) {
+        // -1 correction entre JDBC et SPARK car index différent (spark 0 et JDBC 1). Insert null en base si la valeur de col est nul
+        for (i <- 1 to row.length) { // boucle sur chaque col de la row
           statement.setString(i, if (row.isNullAt(i - 1)) null else row.getString(i - 1))
         }
         statement.executeUpdate()
@@ -111,29 +100,6 @@ object Consumer {
       .option("checkpointLocation", "checkpoints/full/marriages")
       .start()
 
-    // === UN SEUL STREAM pour toutes les stats
-    val statsStream = parsedDF.writeStream
-      .outputMode("append")
-      .option("checkpointLocation", "checkpoints/statistics/global")
-      .foreachBatch { (batchDF: Dataset[Row], batchId: Long) =>
-        val cleanedDF = batchDF.cache()
-
-        writeStatToPostgres(satisfactionByMarriageType(cleanedDF), "satisfaction_by_marriage_type", pgUrl, pgUser, pgPwd)
-        writeStatToPostgres(satisfactionByAgeRange(cleanedDF), "satisfaction_by_age_range", pgUrl, pgUser, pgPwd)
-        writeStatToPostgres(satisfactionByEducationLevel(cleanedDF), "satisfaction_by_education_level", pgUrl, pgUser, pgPwd)
-        writeStatToPostgres(satisfactionByReligion(cleanedDF), "satisfaction_by_religion_arranged", pgUrl, pgUser, pgPwd)
-        writeStatToPostgres(satisfactionByIncomeLevel(cleanedDF), "satisfaction_by_income_level", pgUrl, pgUser, pgPwd)
-        writeStatToPostgres(divorcesByReligion(cleanedDF), "divorces_by_religion", pgUrl, pgUser, pgPwd)
-        writeStatToPostgres(divorcesByEducation(cleanedDF), "divorces_by_education", pgUrl, pgUser, pgPwd)
-        writeStatToPostgres(divorcesBySpouseWorking(cleanedDF), "divorces_by_spouse_working", pgUrl, pgUser, pgPwd)
-
-        cleanedDF.unpersist()
-        ()
-      }
-      .start()
-
-
-
     // ======= STATISTICS ========
 
     // Ici on checkpoint + overwrite. On fait les groupby sur les chunks du full dataset. On as donc besoin d'une "save" du groupBy, pour les cumulés (d'ou le checkpoint)
@@ -141,8 +107,16 @@ object Consumer {
 
     val queries = List(
       insertFullDataset,
-      statsStream
+      writeStatStream(satisfactionByMarriageType(parsedDF), "checkpoints/statistics/satisfactionMariage", "satisfaction_by_marriage_type"),
+      writeStatStream(satisfactionByAgeRange(parsedDF), "checkpoints/statistics/satisfactionAgeRange", "satisfaction_by_age_range"),
+      writeStatStream(satisfactionByEducationLevel(parsedDF), "checkpoints/statistics/satisfactionEducationLevel", "satisfaction_by_education_level"),
+      writeStatStream(satisfactionByReligion(parsedDF), "checkpoints/statistics/satisfactionReligionArranged", "satisfaction_by_religion_arranged"),
+      writeStatStream(satisfactionByIncomeLevel(parsedDF), "checkpoints/statistics/satisfactionIncomeLevel", "satisfaction_by_income_level"),
+      writeStatStream(divorcesByReligion(parsedDF), "checkpoints/statistics/divorcesByReligion", "divorces_by_religion"),
+      writeStatStream(divorcesByEducation(parsedDF), "checkpoints/statistics/divorcesByEducation", "divorces_by_education"),
+      writeStatStream(divorcesBySpouseWorking(parsedDF), "checkpoints/statistics/divorcesBySpouse", "divorces_by_spouse_working"),
     )
+
 
 
     queries.foreach(_.awaitTermination())

@@ -169,26 +169,16 @@ df['years_since_marriage'] = pd.to_numeric(df['years_since_marriage'], errors='c
 
 
 # ====================== CLOSE DB =============================
-#cursor.close()
-#conn.close()
+
 engine.dispose()
 
 
 # ====================== AUTOREFRESH ==========================
-if len(df) != 10_000:
-    st_autorefresh(interval=5000, limit=None, key="autorefresh")
-
-
-
+#if len(df) != 10_000:
+#    st_autorefresh(interval=5000, limit=None, key="autorefresh")
 
 # ====================== VISUALS - INTRO ==============================
 # ====================== VUE D'ENSEMBLE ==============
-
-# Chargement des données principales
-df = load_data_from_db("SELECT * FROM marriages")
-df['age_at_marriage'] = pd.to_numeric(df['age_at_marriage'], errors='coerce')
-df['children_count'] = pd.to_numeric(df['children_count'], errors='coerce')
-df['years_since_marriage'] = pd.to_numeric(df['years_since_marriage'], errors='coerce')
 
 st.markdown('<div id="overview"></div>', unsafe_allow_html=True)
 st.markdown("## Vue d'ensemble")

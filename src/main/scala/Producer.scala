@@ -21,14 +21,14 @@ object Producer {
   // stock l'avancement du traitement
   private val progressFile = "src/main/scala/OUTPUT/progress.txt"
 
-  // Lis le fichier, si rien, on commence à 0, si lines, on reprend à partir de la dernière.
+  // Read file, si rien, on commence à 0, si lines, on reprend à partir de la dernière.
   private def readProgress(): Int = {
-    val f = new File(progressFile)
-    if (!f.exists) 0
+    val f = new File(progressFile) // "load" path file
+    if (!f.exists) 0 // si !file, alors chunks = 0
     else {
       Using.resource(Source.fromFile(f)) { source =>
         val lines = source.getLines().toList
-        if (lines.nonEmpty) lines.head.toInt else 0
+        if (lines.nonEmpty) lines.head.toInt else 0 // si une line dans le file, on récup la dernière (head), on return le int.
       }
     }
   }
@@ -50,7 +50,7 @@ object Producer {
 
     import spark.implicits._
 
-    spark.sparkContext.setLogLevel("WARN")
+    spark.sparkContext.setLogLevel("WARN") // OFF / ERROR / INFO (parle trop) ...
     // Empeche la creation des fichier checkpoint CRC (checksum HDFS dont on se passe volontier).
     spark.sparkContext.hadoopConfiguration.set(
       "fs.file.impl",
@@ -64,29 +64,32 @@ object Producer {
       .csv(props.getProperty("input.path"))
       .cache()
 
-    // WindowFunc, donne un "id" au chunk (en gros)
+
+    // == CHUNKS SPLIT ==
+
+    // WindowFunc (tri window), trie les lignes par ID
     val w = Window.orderBy(col("ID").cast("int")) // Conversion int car col origin en string
 
     val withChunksDF = rawDF
-      .withColumn("line_number", row_number().over(w)) // Num de ligne au cas ou ligne avec id manquant
-      .withColumn("chunkId", floor(($"line_number" - 1) / props.getProperty("chunk.size").toInt).cast("int")) // ChunID
+      .withColumn("line_number", row_number().over(w)) // row_number() ajoute un num, basé sur le trie par ID.
+      .withColumn("chunkId", floor(($"line_number" - 1) / props.getProperty("chunk.size").toInt).cast("int")) // divise par le chunks.size. Tant que line_number / chunks.size pas égal à un int. On prend l'int du dessous.
       .cache()
 
 
 
     // == Gestion du nombre total de chunk ==
 
-    // Calcule le nombre total de chunks +1 car commence a 0
+    // Récupère le max(chunkId)
     val numChunks = withChunksDF
-      .agg(max("chunkId").alias("maxChunkId"))
-      .selectExpr("maxChunkId + 1 as numChunks")
-      .first()
-      .getAs[Int]("numChunks")
+      .agg(max("chunkId").alias("maxChunkId")) // get max chunkId
+      .selectExpr("maxChunkId + 1 as numChunks") // +1 (from 0)
+      .first() // agg = une seule ligne
+      .getAs[Int]("numChunks") // toInt()~
 
 
     // Reprend depuis le dernier chunk dans le progress
     val startChunk = readProgress()
-    if (startChunk >= numChunks) {
+    if (startChunk >= numChunks) { // Si chunk dans progress.txt >= maxChunks, déjà done.
       println(s"[INFO] $numChunks chunk ont déjà était fait.")
       spark.stop()
       return
@@ -94,14 +97,14 @@ object Producer {
 
     // =========== KAFKA ===========
 
-    // config kafka
+    // FileSystem pour manipuler nos files
     val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
 
-    // Boucle par chunk
+    // Boucle par chunk (from startChunk (progessFile) to numChunks
     for (chunkId <- startChunk until numChunks) {
-      val t0 = System.nanoTime()
+      val t0 = System.nanoTime() // chrono par chunk
 
-      // DROP les col inutiles pour le traitement.
+      // DROP useless col
       val chunkDF = withChunksDF
         .filter($"chunkId" === chunkId)
         .drop("line_number", "chunkId")
@@ -109,27 +112,29 @@ object Producer {
 
       // Write chunk into CSV
       val tmpPath = new Path(s"${props.getProperty("output.dir")}/temp/chunk_$chunkId")
-      chunkDF.coalesce(1)
+      chunkDF.coalesce(1) // 1 CSV file par chunk
         .write.mode("overwrite") // précaution
         .option("header", "true")
         .csv(tmpPath.toString)
 
-      // Gestion des .part pour les retirer
-      val part = fs.listStatus(tmpPath)
+      // Spark écrit en part- (auto), on les retires.
+      // get path
+      val part_path = fs.listStatus(tmpPath)
         .find(_.getPath.getName.startsWith("part-"))
         .get
         .getPath
 
+      // real output file.csv
       val finalPath = new Path(s"${props.getProperty("output.dir")}/chunk_$chunkId.csv")
-      fs.rename(part, finalPath)
+      fs.rename(part_path, finalPath) // transit
       fs.delete(tmpPath, true) // drop les temp
 
 
       // == Prepare to KAFKA ==
 
-      // Evite error avec les null
+      // KAFKA attend key : value
       val kafkaDF = chunkDF
-        .selectExpr("CAST(null AS STRING) AS key", "to_json(struct(*)) AS value")
+        .selectExpr("CAST(null AS STRING) AS key", "to_json(struct(*)) AS value") // Pas de "key" ici. Aucun partionning spécial. struct(*) toutes les col de la ligne
 
       // WRITE
       kafkaDF
