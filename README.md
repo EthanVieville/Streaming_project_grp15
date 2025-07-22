@@ -1,4 +1,4 @@
-### Postegre
+### Postgre
 
 Télécharger et extraire:
 https://archive.apache.org/dist/kafka/3.7.0/kafka_2.13-3.7.0.tgz
